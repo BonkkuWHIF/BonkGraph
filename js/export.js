@@ -60,6 +60,8 @@ async function renderCanvasAndDownload(state, board) {
   const { origin, template, placements, characters } = state;
   const ox = origin.x * W, oy = origin.y * H;
   const q = template.quadrants;
+  const headerPad = 20;
+  const logoSize = 44;
 
   // 4 quadrant (alpha ให้เท่ากับหน้าจอ)
   ctx.globalAlpha = 0.85;
@@ -75,21 +77,6 @@ async function renderCanvasAndDownload(state, board) {
   line(ctx, ox, 0, ox, H);
   line(ctx, 0, oy, W, oy);
 
-  // ป้าย quadrant
-  ctx.font = '600 26px system-ui, sans-serif';
-  drawCorner(ctx, q.topLeft.label, 20, 20, 'left', 'top');
-  drawCorner(ctx, q.topRight.label, W - 20, 20, 'right', 'top');
-  drawCorner(ctx, q.bottomLeft.label, 20, H - 20, 'left', 'bottom');
-  drawCorner(ctx, q.bottomRight.label, W - 20, H - 20, 'right', 'bottom');
-
-  // ป้ายปลายแกน
-  ctx.font = '500 22px system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,.85)';
-  textAt(ctx, template.axis.x.right, W - 14, oy, 'right', 'middle');
-  textAt(ctx, template.axis.x.left, 14, oy, 'left', 'middle');
-  textAt(ctx, template.axis.y.top, ox, 14, 'center', 'top');
-  textAt(ctx, template.axis.y.bottom, ox, H - 14, 'center', 'bottom');
-
   // badges
   const placed = characters.filter((c) => placements[c.id]);
   const imgs = await Promise.all(placed.map((c) => loadImg(avatarBadgeUrl(c.avatarUrl, 104))));
@@ -99,24 +86,59 @@ async function renderCanvasAndDownload(state, board) {
     drawBadge(ctx, imgs[i], c, p.x * W, p.y * H, R);
   });
 
-  // ชื่อกราฟ (กลางบน)
-  ctx.font = '700 40px system-ui, sans-serif';
-  ctx.fillStyle = '#fff';
-  ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 8;
-  textAt(ctx, state.title || "Character's Flag", W / 2, 30, 'center', 'top');
-  ctx.shadowBlur = 0;
+  // header แถวบน: logo+brand ซ้าย | แถวล่าง: ชื่อกราฟกลาง (ไม่ทับกัน)
+  const brandGap = 16;
+  const brandBottom = headerPad + logoSize;
 
-  // logo + เครดิต (ซ้ายบน)
   try {
     const logo = await loadImg('assets/whif_logo.jpg');
     if (logo) {
-      const s = 54;
-      roundImage(ctx, logo, 20, 22, s, s, 12);
-      ctx.font = '700 24px system-ui, sans-serif';
+      const logoY = headerPad;
+      roundImage(ctx, logo, headerPad, logoY, logoSize, logoSize, 10);
+      const textX = headerPad + logoSize + brandGap;
+      const textY = logoY + logoSize / 2;
+      ctx.font = '700 22px system-ui, "Noto Sans Thai", sans-serif';
       ctx.fillStyle = '#fff';
-      textAt(ctx, 'BonkGraph by Bonkku', 20 + s + 12, 22 + s / 2, 'left', 'middle');
+      ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6;
+      textAt(ctx, 'BonkGraph', textX, textY - 10, 'left', 'middle');
+      ctx.font = '500 17px system-ui, "Noto Sans Thai", sans-serif';
+      textAt(ctx, 'by Bonkku', textX, textY + 12, 'left', 'middle');
+      ctx.shadowBlur = 0;
     }
   } catch (_) {}
+
+  const title = state.title || "Character's Flag";
+  const titleY = brandBottom + 20;
+  const titleSidePad = 32;
+  const titleMaxW = W - titleSidePad * 2;
+  let titleFont = 36;
+  ctx.font = `700 ${titleFont}px system-ui, "Noto Sans Thai", sans-serif`;
+  while (titleFont > 20 && ctx.measureText(title).width > titleMaxW) {
+    titleFont -= 2;
+    ctx.font = `700 ${titleFont}px system-ui, "Noto Sans Thai", sans-serif`;
+  }
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 8;
+  textAt(ctx, title, W / 2, titleY, 'center', 'top');
+  ctx.shadowBlur = 0;
+
+  const headerBottom = titleY + titleFont + 16;
+
+  // ป้าย quadrant (ใต้ header)
+  ctx.font = '600 26px system-ui, sans-serif';
+  drawCorner(ctx, q.topLeft.label, 20, headerBottom, 'left', 'top');
+  drawCorner(ctx, q.topRight.label, W - 20, headerBottom, 'right', 'top');
+  drawCorner(ctx, q.bottomLeft.label, 20, H - 20, 'left', 'bottom');
+  drawCorner(ctx, q.bottomRight.label, W - 20, H - 20, 'right', 'bottom');
+
+  // ป้ายปลายแกน
+  const axisTopY = headerBottom + 4;
+  ctx.font = '500 22px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  textAt(ctx, template.axis.x.right, W - 14, oy, 'right', 'middle');
+  textAt(ctx, template.axis.x.left, 14, oy, 'left', 'middle');
+  textAt(ctx, template.axis.y.top, ox, axisTopY, 'center', 'top');
+  textAt(ctx, template.axis.y.bottom, ox, H - 14, 'center', 'bottom');
 
   canvas.toBlob((blob) => {
     if (!blob) { alert('สร้าง PNG ไม่สำเร็จ'); return; }
