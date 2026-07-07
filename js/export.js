@@ -1,5 +1,7 @@
 // export/import JSON (ข้อ 9), export PNG (ข้อ 10) + gimmick popup
 
+import { avatarBadgeUrl } from './data.js';
+
 // ---------- JSON ----------
 export function exportJSON(state) {
   const snap = {
@@ -90,7 +92,7 @@ async function renderCanvasAndDownload(state, board) {
 
   // badges
   const placed = characters.filter((c) => placements[c.id]);
-  const imgs = await Promise.all(placed.map((c) => loadImg(c.avatarUrl)));
+  const imgs = await Promise.all(placed.map((c) => loadImg(avatarBadgeUrl(c.avatarUrl, 104))));
   const R = Math.round(W * 0.033);
   placed.forEach((c, i) => {
     const p = placements[c.id];

@@ -1,4 +1,4 @@
-import { loadCharacters } from './data.js';
+import { loadCharacters, avatarBadgeUrl } from './data.js';
 import { cloneTemplate, TEMPLATES, QUADRANT_KEYS } from './templates.js';
 import { exportJSON, importJSON, exportPNG } from './export.js';
 
@@ -115,7 +115,7 @@ function badgeEl(char, placed) {
   b.style.setProperty('--flag', char.color);
 
   const img = document.createElement('img');
-  img.src = char.avatarUrl;
+  img.src = avatarBadgeUrl(char.avatarUrl, placed ? 104 : 88);
   img.alt = char.name;
   img.crossOrigin = 'anonymous';       // เผื่อ export PNG (ข้อ 10)
   img.loading = 'lazy';

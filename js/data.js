@@ -10,6 +10,18 @@ export const FLAG_COLORS = {
   'ธงดำ': '#4b5563',
 };
 
+const BADGE_TRANSFORM = 'fit=scale-down,quality=85,format=auto';
+
+// whif CDN — ย่อรูปจาก /public เป็น transform URL (เช่น width=88,fit=scale-down,...)
+export function avatarBadgeUrl(url, width = 88) {
+  if (!url) return '';
+  const transform = `width=${width},${BADGE_TRANSFORM}`;
+  if (!url.includes('image.whif.io')) return url;
+  return url
+    .replace(/\/width=[^/]+$/, `/${transform}`)
+    .replace(/\/public\/?$/, `/${transform}`);
+}
+
 // สร้าง id ที่คงที่จากข้อมูลตัวละคร เพื่อใช้ผูก placement ตอน export/import
 function makeId(c, i) {
   return `${c.universeId || 'u'}-${i}-${(c.name || '').slice(0, 8)}`;
