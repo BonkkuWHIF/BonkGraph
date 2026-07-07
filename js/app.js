@@ -25,14 +25,83 @@ function cacheDom() {
 }
 
 // ---------- RENDER: กราฟ (quadrant + แกน + ป้าย + origin) ----------
-function renderGraph() {
-  const { origin, template } = state;
-  const ox = (origin.x * 100).toFixed(2) + '%';
-  const oy = (origin.y * 100).toFixed(2) + '%';
-  const rx = ((1 - origin.x) * 100).toFixed(2) + '%';
-  const ry = ((1 - origin.y) * 100).toFixed(2) + '%';
+const QUAD_KEYS = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
 
-  // ลบของเดิม (เก็บ badge ไว้ ไม่ยุ่ง)
+function originPercents() {
+  const { origin } = state;
+  return {
+    ox: (origin.x * 100).toFixed(2) + '%',
+    oy: (origin.y * 100).toFixed(2) + '%',
+    rx: ((1 - origin.x) * 100).toFixed(2) + '%',
+    ry: ((1 - origin.y) * 100).toFixed(2) + '%',
+  };
+}
+
+function syncGraphGeometry() {
+  const { template } = state;
+  const { ox, oy, rx, ry } = originPercents();
+  const q = template.quadrants;
+  const quadStyles = [
+    `left:0;top:0;width:${ox};height:${oy}`,
+    `left:${ox};top:0;width:${rx};height:${oy}`,
+    `left:0;top:${oy};width:${ox};height:${ry}`,
+    `left:${ox};top:${oy};width:${rx};height:${ry}`,
+  ];
+
+  el.board.querySelectorAll('.gfx.quadrant').forEach((node, i) => {
+    node.style.cssText = quadStyles[i];
+    node.style.background = q[QUAD_KEYS[i]].color;
+  });
+
+  const vLine = el.board.querySelector('.gfx.axis-v');
+  const hLine = el.board.querySelector('.gfx.axis-h');
+  if (vLine) vLine.style.left = ox;
+  if (hLine) hLine.style.top = oy;
+
+  const ax = template.axis;
+  const axisStyles = {
+    'x-right': `right:6px;top:${oy};transform:translateY(-50%)`,
+    'x-left': `left:6px;top:${oy};transform:translateY(-50%)`,
+    'y-top': `top:4px;left:${ox};transform:translateX(-50%)`,
+    'y-bottom': `bottom:4px;left:${ox};transform:translateX(-50%)`,
+  };
+  const axisText = {
+    'x-right': ax.x.right,
+    'x-left': ax.x.left,
+    'y-top': ax.y.top,
+    'y-bottom': ax.y.bottom,
+  };
+  el.board.querySelectorAll('.gfx.axis-label').forEach((node) => {
+    const key = node.dataset.axis;
+    if (!key || !axisText[key]) return;
+    node.style.cssText = axisStyles[key];
+    node.textContent = axisText[key];
+  });
+
+  const oh = el.board.querySelector('.origin-handle');
+  if (oh) {
+    oh.style.left = ox;
+    oh.style.top = oy;
+  }
+}
+
+function ensureOriginHandle() {
+  let oh = el.board.querySelector('.origin-handle');
+  if (oh) return oh;
+  oh = document.createElement('div');
+  oh.className = 'origin-handle';
+  oh.title = 'ลากเพื่อย้ายจุด 0,0';
+  oh.setAttribute('aria-label', 'ลากเพื่อย้ายจุด 0,0');
+  oh.addEventListener('pointerdown', startOriginDrag);
+  el.board.appendChild(oh);
+  return oh;
+}
+
+function renderGraph() {
+  const { template } = state;
+  const { ox, oy, rx, ry } = originPercents();
+
+  // ลบ gfx เดิม (เก็บ badge + origin handle ไว้)
   el.board.querySelectorAll('.gfx').forEach((n) => n.remove());
 
   const q = template.quadrants;
@@ -67,7 +136,6 @@ function renderGraph() {
     }
   }
 
-  // เส้นแกน
   const vLine = document.createElement('div');
   vLine.className = 'gfx axis axis-v';
   vLine.style.left = ox;
@@ -77,33 +145,26 @@ function renderGraph() {
   frag.appendChild(vLine);
   frag.appendChild(hLine);
 
-  // ป้ายปลายแกน
   const ax = template.axis;
   const axisLabels = [
-    [ax.x.right, `right:6px;top:${oy};transform:translateY(-50%)`],
-    [ax.x.left, `left:6px;top:${oy};transform:translateY(-50%)`],
-    [ax.y.top, `top:4px;left:${ox};transform:translateX(-50%)`],
-    [ax.y.bottom, `bottom:4px;left:${ox};transform:translateX(-50%)`],
+    ['x-right', ax.x.right, `right:6px;top:${oy};transform:translateY(-50%)`],
+    ['x-left', ax.x.left, `left:6px;top:${oy};transform:translateY(-50%)`],
+    ['y-top', ax.y.top, `top:4px;left:${ox};transform:translateX(-50%)`],
+    ['y-bottom', ax.y.bottom, `bottom:4px;left:${ox};transform:translateX(-50%)`],
   ];
-  for (const [text, style] of axisLabels) {
+  for (const [key, text, style] of axisLabels) {
     if (!text) continue;
     const a = document.createElement('div');
     a.className = 'gfx axis-label';
+    a.dataset.axis = key;
     a.style.cssText = style;
     a.textContent = text;
     frag.appendChild(a);
   }
 
-  // handle จุด origin (ลากได้)
-  const oh = document.createElement('div');
-  oh.className = 'gfx origin-handle';
-  oh.style.left = ox;
-  oh.style.top = oy;
-  oh.title = 'ลากเพื่อย้ายจุด 0,0';
-  oh.addEventListener('pointerdown', startOriginDrag);
-  frag.appendChild(oh);
-
   el.board.appendChild(frag);
+  ensureOriginHandle();
+  syncGraphGeometry();
 }
 
 // ---------- RENDER: badge ----------
@@ -156,6 +217,8 @@ function renderBadges() {
 export function renderAll() {
   renderGraph();
   renderBadges();
+  const oh = el.board.querySelector('.origin-handle');
+  if (oh) el.board.appendChild(oh);
   el.title.value = state.title;
   document.title = (state.title || 'BonkGraph') + ' — BonkGraph';
 }
@@ -221,28 +284,41 @@ function onBadgeUp(e) {
 
 // ---------- DRAG: origin ----------
 let originDrag = false;
+
+function moveOriginTo(clientX, clientY) {
+  const br = el.board.getBoundingClientRect();
+  state.origin.x = clamp((clientX - br.left) / br.width, 0.01, 0.99);
+  state.origin.y = clamp((clientY - br.top) / br.height, 0.01, 0.99);
+  syncGraphGeometry();
+}
+
 function startOriginDrag(e) {
+  if (e.button !== 0 && e.pointerType === 'mouse') return;
   e.preventDefault();
   e.stopPropagation();
   originDrag = true;
   const h = e.currentTarget;
-  try { h.setPointerCapture(e.pointerId); } catch (_) {}
+  h.classList.add('dragging');
+  moveOriginTo(e.clientX, e.clientY);
+
   const move = (ev) => {
     if (!originDrag) return;
-    const br = el.board.getBoundingClientRect();
-    state.origin.x = clamp((ev.clientX - br.left) / br.width, 0.02, 0.98);
-    state.origin.y = clamp((ev.clientY - br.top) / br.height, 0.02, 0.98);
-    renderGraph();
+    ev.preventDefault();
+    moveOriginTo(ev.clientX, ev.clientY);
   };
-  const up = (ev) => {
+  const end = () => {
+    if (!originDrag) return;
     originDrag = false;
-    h.releasePointerCapture?.(ev.pointerId);
-    h.removeEventListener('pointermove', move);
-    h.removeEventListener('pointerup', up);
+    h.classList.remove('dragging');
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', end);
+    window.removeEventListener('pointercancel', end);
     saveLocal();
   };
-  h.addEventListener('pointermove', move);
-  h.addEventListener('pointerup', up);
+
+  window.addEventListener('pointermove', move, { passive: false });
+  window.addEventListener('pointerup', end);
+  window.addEventListener('pointercancel', end);
 }
 
 // ---------- utils ----------
