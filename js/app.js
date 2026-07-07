@@ -223,6 +223,31 @@ export function renderAll() {
   document.title = (state.title || 'BonkGraph') + ' — BonkGraph';
 }
 
+// ---------- snap grid (วางบนกระดานแล้วเด้งเข้าแถว/คอลัมน์) ----------
+const SNAP_DIVISIONS = 10;
+
+function snapCoord(v) {
+  const step = 1 / SNAP_DIVISIONS;
+  return clamp(Math.round(v / step) * step, 0, 1);
+}
+
+function boardPointFromClient(cx, cy) {
+  const br = el.board.getBoundingClientRect();
+  const inside =
+    cx >= br.left && cx <= br.right &&
+    cy >= br.top && cy <= br.bottom;
+  if (!inside) return { inside: false };
+  const x = snapCoord((cx - br.left) / br.width);
+  const y = snapCoord((cy - br.top) / br.height);
+  return {
+    inside: true,
+    x,
+    y,
+    clientX: br.left + x * br.width,
+    clientY: br.top + y * br.height,
+  };
+}
+
 // ---------- DRAG: badge ----------
 let drag = null;
 function startBadgeDrag(e, char) {
@@ -253,7 +278,9 @@ function moveDragTo(cx, cy) {
 function onBadgeMove(e) {
   if (!drag) return;
   drag.moved = true;
-  moveDragTo(e.clientX, e.clientY);
+  const pt = boardPointFromClient(e.clientX, e.clientY);
+  if (pt.inside) moveDragTo(pt.clientX, pt.clientY);
+  else moveDragTo(e.clientX, e.clientY);
 }
 function onBadgeUp(e) {
   if (!drag) return;
@@ -263,16 +290,10 @@ function onBadgeUp(e) {
   b.removeEventListener('pointerup', onBadgeUp);
   b.removeEventListener('pointercancel', onBadgeUp);
 
-  const br = el.board.getBoundingClientRect();
-  const inside =
-    e.clientX >= br.left && e.clientX <= br.right &&
-    e.clientY >= br.top && e.clientY <= br.bottom;
+  const pt = boardPointFromClient(e.clientX, e.clientY);
 
-  if (inside) {
-    // วางบนกระดาน (clamp ให้อยู่ในกรอบ)
-    const x = clamp((e.clientX - br.left) / br.width, 0, 1);
-    const y = clamp((e.clientY - br.top) / br.height, 0, 1);
-    state.placements[drag.char.id] = { x, y };
+  if (pt.inside) {
+    state.placements[drag.char.id] = { x: pt.x, y: pt.y };
   } else {
     // ปล่อยนอกกระดาน = เอากลับลงถาด
     delete state.placements[drag.char.id];
