@@ -176,7 +176,9 @@ body {
 
 /* ---------- badges ---------- */
 .badge {
-  width: 54px;
+  width: auto;
+  min-width: 54px;
+  max-width: 120px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -188,7 +190,7 @@ body {
   width: 46px; height: 46px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid var(--flag, #888);
+  border: 2px solid #fff;
   background: #2a2540;
   pointer-events: none;
 }
@@ -198,19 +200,19 @@ body {
   width: 46px; height: 46px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 50%;
-  border: 3px solid var(--flag, #888);
+  border: 2px solid #fff;
   background: var(--flag, #2a2540);
   color: #fff; font-weight: 700; font-size: 20px;
 }
 .badge.placed.noimg::before { width: 52px; height: 52px; }
 .badge-name {
   font-size: 10px;
+  line-height: 1.25;
   color: var(--text);
   text-align: center;
-  max-width: 60px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 120px;
+  white-space: normal;
+  word-break: break-word;
   text-shadow: 0 1px 2px rgba(0,0,0,.8);
   pointer-events: none;
 }

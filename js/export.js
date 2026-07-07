@@ -146,17 +146,17 @@ function drawBadge(ctx, img, char, x, y, R) {
   }
   ctx.restore();
 
-  // ขอบสีธง
+  // ขอบบางสีขาว
   ctx.beginPath();
   ctx.arc(x, y, R, 0, Math.PI * 2);
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = char.color;
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#fff';
   ctx.stroke();
 
   // ชื่อใต้ badge
   ctx.font = '600 18px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  const name = char.name.length > 14 ? char.name.slice(0, 13) + '…' : char.name;
+  const name = char.name;
   const tw = ctx.measureText(name).width;
   ctx.fillStyle = 'rgba(0,0,0,.55)';
   roundRect(ctx, x - tw / 2 - 6, y + R + 4, tw + 12, 24, 6);
