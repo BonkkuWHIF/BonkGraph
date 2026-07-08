@@ -1,11 +1,19 @@
 // ระบบหลายภาษาสำหรับ UI chrome (ปุ่ม/เมนู/modal/tooltip)
 // ป้ายในกราฟ (Green Flag/axis) ไม่แปล — เป็น content ที่ user แก้เอง default EN
 
+// ธง SVG แบบ inline (emoji ธงไม่ render บน Windows) — viewBox 30x20
+export const FLAGS = {
+  en: '<svg viewBox="0 0 30 20"><rect width="30" height="20" fill="#012169"/><path d="M0 0 30 20M30 0 0 20" stroke="#fff" stroke-width="4"/><path d="M0 0 30 20M30 0 0 20" stroke="#C8102E" stroke-width="2"/><path d="M15 0V20M0 10H30" stroke="#fff" stroke-width="6"/><path d="M15 0V20M0 10H30" stroke="#C8102E" stroke-width="3.5"/></svg>',
+  th: '<svg viewBox="0 0 30 20"><rect width="30" height="20" fill="#A51931"/><rect y="3.33" width="30" height="13.34" fill="#F4F5F8"/><rect y="6.67" width="30" height="6.66" fill="#2D2A4A"/></svg>',
+  ja: '<svg viewBox="0 0 30 20"><rect width="30" height="20" fill="#fff"/><circle cx="15" cy="10" r="6" fill="#BC002D"/></svg>',
+  ko: '<svg viewBox="0 0 30 20"><rect width="30" height="20" fill="#fff"/><g transform="translate(15 10)"><circle r="6" fill="#CD2E3A"/><path d="M0 -6a3 3 0 0 1 0 6a3 3 0 0 0 0 6a6 6 0 0 1 0 -12" fill="#0047A0"/></g></svg>',
+};
+
 export const LANGS = [
-  { code: 'en', label: 'EN' },
-  { code: 'th', label: 'ไทย' },
-  { code: 'ja', label: '日本語' },
-  { code: 'ko', label: '한국어' },
+  { code: 'en', label: 'EN', flag: FLAGS.en },
+  { code: 'th', label: 'ไทย', flag: FLAGS.th },
+  { code: 'ja', label: '日本語', flag: FLAGS.ja },
+  { code: 'ko', label: '한국어', flag: FLAGS.ko },
 ];
 
 const DICT = {
@@ -53,6 +61,16 @@ const DICT = {
     errNoChar: 'No characters with name/avatarUrl found',
     invalidFile: 'Invalid file: ',
     failPng: 'Failed to create PNG',
+    titleColor: 'Title color',
+    titleSize: 'Title size',
+    badgeSize: 'Badge size',
+    displayHead: 'Display',
+    gimmickCute: 'Is Ark-chan cute? 🥺',
+    gimmickYes: 'Yes 💖',
+    gimmickNo: 'No',
+    tantrumTitle: '😾 Ark-chan threw a tantrum!',
+    tantrumMsg: 'Your data bounced right back to where it was...',
+    gimmickOk: 'OK',
   },
   th: {
     editGraph: '⚙️ แก้กราฟ',
@@ -98,6 +116,16 @@ const DICT = {
     errNoChar: 'ไม่พบตัวละครที่มี name/avatarUrl',
     invalidFile: 'ไฟล์ไม่ถูกต้อง: ',
     failPng: 'สร้าง PNG ไม่สำเร็จ',
+    titleColor: 'สีชื่อกราฟ',
+    titleSize: 'ขนาดชื่อ',
+    badgeSize: 'ขนาด badge',
+    displayHead: 'การแสดงผล',
+    gimmickCute: 'น้องอาร์คน่ารักไหม? 🥺',
+    gimmickYes: 'ใช่ 💖',
+    gimmickNo: 'ไม่',
+    tantrumTitle: '😾 น้องอาร์คอาละวาด!',
+    tantrumMsg: 'ข้อมูลของคุณเด้งกลับไปอยู่ที่เดิม...',
+    gimmickOk: 'โอเค',
   },
   ja: {
     editGraph: '⚙️ グラフ編集',
@@ -143,6 +171,16 @@ const DICT = {
     errNoChar: 'name/avatarUrl を持つキャラが見つかりません',
     invalidFile: '無効なファイル: ',
     failPng: 'PNGの作成に失敗しました',
+    titleColor: 'タイトル色',
+    titleSize: 'タイトルサイズ',
+    badgeSize: 'バッジサイズ',
+    displayHead: '表示',
+    gimmickCute: 'アークちゃんは可愛い？🥺',
+    gimmickYes: 'はい 💖',
+    gimmickNo: 'いいえ',
+    tantrumTitle: '😾 アークちゃんが大暴れ！',
+    tantrumMsg: 'データは元の場所に戻っちゃった…',
+    gimmickOk: 'OK',
   },
   ko: {
     editGraph: '⚙️ 그래프 편집',
@@ -188,6 +226,16 @@ const DICT = {
     errNoChar: 'name/avatarUrl이 있는 캐릭터가 없습니다',
     invalidFile: '잘못된 파일: ',
     failPng: 'PNG 생성 실패',
+    titleColor: '제목 색상',
+    titleSize: '제목 크기',
+    badgeSize: '배지 크기',
+    displayHead: '표시',
+    gimmickCute: '아크짱 귀엽지? 🥺',
+    gimmickYes: '응 💖',
+    gimmickNo: '아니',
+    tantrumTitle: '😾 아크짱이 삐졌어요!',
+    tantrumMsg: '데이터가 원래 자리로 되돌아갔어요…',
+    gimmickOk: '확인',
   },
 };
 

@@ -8,10 +8,15 @@ import { t, setLang, getLang, applyI18n, LANGS } from './i18n.js';
 const state = {
   title: '',
   template: cloneTemplate('flag'),
-  origin: { x: 0.5, y: 0.5 },      // จุด (0,0) ของกราฟ — ลากได้ (ข้อ 6)
+  origin: { x: 0.5, y: 0.5 },      // จุด (0,0) ของกราฟ — ลากได้
   characters: [],                   // pool ทั้งหมด = defaults + custom (ใช้ render)
   customCharacters: [],             // ตัวที่ user เพิ่มเอง (อัปโหลด/วาง JSON) — persist ได้
   placements: {},                   // { charId: {x, y} } เฉพาะตัวที่วางบนกระดาน
+  // การแสดงผล
+  titleColor: '#ffffff',
+  titleScale: 3.2,                  // ขนาดชื่อ = % ของความกว้าง frame
+  badgeScale: 1,                    // ตัวคูณขนาด badge บนกระดาน
+  url: 'https://www.whif.io/',      // ข้อความมุมขวาล่างนอกกราฟ
 };
 
 let defaultCharacters = [];         // ตัวละคร default จาก characters.json
@@ -28,9 +33,18 @@ export function getState() { return state; }
 const el = {};
 function cacheDom() {
   el.board = document.getElementById('board');
+  el.stage = document.getElementById('stage');
   el.tray = document.getElementById('tray');
   el.trayCount = document.getElementById('tray-count');
   el.title = document.getElementById('graph-title');
+  el.url = document.getElementById('frame-url');
+}
+
+// อัปเดต CSS variables ของการแสดงผล (title สี/ขนาด, badge ขนาด)
+function applyDisplayVars() {
+  el.stage.style.setProperty('--title-color', state.titleColor);
+  el.stage.style.setProperty('--title-scale', state.titleScale);
+  el.stage.style.setProperty('--badge-scale', state.badgeScale);
 }
 
 // ---------- RENDER: กราฟ (quadrant + แกน + ป้าย + origin) ----------
@@ -229,7 +243,20 @@ export function renderAll() {
   const oh = el.board.querySelector('.origin-handle');
   if (oh) el.board.appendChild(oh);
   el.title.value = state.title;
+  el.url.value = state.url;
+  applyDisplayVars();
+  syncDisplayControls();
   document.title = (state.title || 'BonkGraph') + ' — BonkGraph';
+}
+
+// เซ็ตค่าใน panel การแสดงผลให้ตรงกับ state
+function syncDisplayControls() {
+  const c = document.getElementById('ctl-title-color');
+  const s = document.getElementById('ctl-title-size');
+  const b = document.getElementById('ctl-badge-size');
+  if (c) c.value = state.titleColor;
+  if (s) s.value = state.titleScale;
+  if (b) b.value = state.badgeScale;
 }
 
 // ---------- snap grid (วางบนกระดานแล้วเด้งเข้าแถว/คอลัมน์) ----------
@@ -364,6 +391,10 @@ export function saveLocal() {
       origin: state.origin,
       placements: state.placements,
       customCharacters: state.customCharacters,
+      titleColor: state.titleColor,
+      titleScale: state.titleScale,
+      badgeScale: state.badgeScale,
+      url: state.url,
     }));
   } catch (_) {
     // localStorage เต็ม (รูป data URL ใหญ่) — ข้ามไป ยังใช้งานใน session ได้
@@ -387,6 +418,10 @@ export function applySnapshot(s) {
   if (Array.isArray(s.customCharacters)) {
     state.customCharacters = s.customCharacters.map(normalizeCustom);
   }
+  if (s.titleColor) state.titleColor = s.titleColor;
+  if (s.titleScale != null) state.titleScale = s.titleScale;
+  if (s.badgeScale != null) state.badgeScale = s.badgeScale;
+  if (s.url != null) state.url = s.url;
   rebuildPool();
 }
 
@@ -615,6 +650,22 @@ function wireUI() {
     saveLocal();
   });
 
+  el.url.addEventListener('input', () => {
+    state.url = el.url.value;
+    saveLocal();
+  });
+
+  // display controls
+  document.getElementById('ctl-title-color').addEventListener('input', (e) => {
+    state.titleColor = e.target.value; applyDisplayVars(); saveLocal();
+  });
+  document.getElementById('ctl-title-size').addEventListener('input', (e) => {
+    state.titleScale = parseFloat(e.target.value); applyDisplayVars(); saveLocal();
+  });
+  document.getElementById('ctl-badge-size').addEventListener('input', (e) => {
+    state.badgeScale = parseFloat(e.target.value); applyDisplayVars(); saveLocal();
+  });
+
   document.getElementById('tpl-select').addEventListener('change', (e) => {
     applyTemplate(e.target.value);
   });
@@ -651,16 +702,41 @@ function wireUI() {
   document.getElementById('btn-add-char').addEventListener('click', showAddCharModal);
   document.getElementById('btn-clear-chars').addEventListener('click', clearCustomCharacters);
 
-  // ตัวเลือกภาษา
-  const langSel = document.getElementById('lang-select');
-  langSel.innerHTML = LANGS.map((l) => `<option value="${l.code}">${l.label}</option>`).join('');
-  langSel.value = getLang();
-  langSel.addEventListener('change', () => {
-    setLang(langSel.value);
+  // ตัวเลือกภาษา (dropdown แบบ custom + ธง SVG)
+  setupLangDropdown();
+}
+
+function langOf(code) { return LANGS.find((l) => l.code === code) || LANGS[0]; }
+
+function setupLangDropdown() {
+  const btn = document.getElementById('lang-btn');
+  const menu = document.getElementById('lang-menu');
+
+  const renderBtn = () => {
+    const l = langOf(getLang());
+    btn.innerHTML = `<span class="lang-flag">${l.flag}</span><span class="lang-lbl">${l.label}</span><span class="caret">▾</span>`;
+  };
+  menu.innerHTML = LANGS.map((l) =>
+    `<button type="button" data-lang="${l.code}"><span class="lang-flag">${l.flag}</span>${l.label}</button>`
+  ).join('');
+
+  const markActive = () => menu.querySelectorAll('button').forEach((b) =>
+    b.classList.toggle('active', b.dataset.lang === getLang()));
+
+  const choose = (code) => {
+    setLang(code);
     localStorage.setItem(LANG_KEY, getLang());
     applyI18n(document);
-    buildTemplateEditor();   // field labels ในตัวแก้ template
-  });
+    buildTemplateEditor();
+    renderBtn(); markActive();
+    menu.hidden = true;
+  };
+
+  renderBtn(); markActive();
+  btn.addEventListener('click', (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; });
+  menu.querySelectorAll('button').forEach((b) =>
+    b.addEventListener('click', () => choose(b.dataset.lang)));
+  document.addEventListener('click', () => { menu.hidden = true; });
 }
 
 const LANG_KEY = 'bonkgraph_lang';

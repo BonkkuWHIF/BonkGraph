@@ -47,110 +47,108 @@ export function exportPNG(state, board, { onClearBoard }) {
   );
 }
 
+const CFONT = '"Anuphan","Hiragino Sans","Yu Gothic","Malgun Gothic","Microsoft JhengHei",system-ui,sans-serif';
+
 async function renderCanvasAndDownload(state, board) {
-  // รอให้ฟอนต์ไทย (Anuphan) โหลดเสร็จก่อน ไม่งั้น canvas จะ render ด้วยฟอนต์ระบบ
+  // รอให้ฟอนต์ Anuphan โหลดก่อน ไม่งั้น canvas จะ render ด้วยฟอนต์ระบบ
   try {
     await Promise.all([
-      document.fonts.load('700 36px "Anuphan"'),
+      document.fonts.load('700 40px "Anuphan"'),
       document.fonts.load('600 26px "Anuphan"'),
       document.fonts.load('500 22px "Anuphan"'),
     ]);
     await document.fonts.ready;
   } catch (_) {}
 
-  const br = board.getBoundingClientRect();
+  const { origin, template, placements, characters } = state;
+  const q = template.quadrants;
+
+  // ---- เลย์เอาต์: กราฟอยู่กลาง มีพื้นดำรอบ (title บน, brand ซ้ายบน, url ขวาล่าง) ----
   const W = 1600;
-  const H = Math.round(W * (br.height / br.width));
+  const sidePad = 48;
+  const bs = W - sidePad * 2;                 // ขนาดกราฟ (สี่เหลี่ยมจัตุรัส)
+  const titlePx = Math.round((state.titleScale || 3.2) / 100 * W);
+  const brandTop = 34, logoSize = 56;
+  const titleY = brandTop + logoSize + 26;
+  const topPad = titleY + titlePx + 28;
+  const bottomPad = 70;
+  const bx = sidePad, by = topPad;            // มุมบนซ้ายของกราฟ
+  const H = topPad + bs + bottomPad;
+
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
 
-  // พื้นหลัง
-  ctx.fillStyle = '#0f0d1a';
-  ctx.fillRect(0, 0, W, H);
+  // พื้นหลังดำ + พื้นกราฟ
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#0f0d1a'; ctx.fillRect(bx, by, bs, bs);
 
-  const { origin, template, placements, characters } = state;
-  const ox = origin.x * W, oy = origin.y * H;
-  const q = template.quadrants;
-  const headerPad = 20;
-  const logoSize = 44;
+  const ox = bx + origin.x * bs, oy = by + origin.y * bs;
 
-  // 4 quadrant (alpha ให้เท่ากับหน้าจอ)
+  // quadrant + แกน (clip อยู่ในกราฟ)
+  ctx.save();
+  ctx.beginPath(); ctx.rect(bx, by, bs, bs); ctx.clip();
   ctx.globalAlpha = 0.85;
-  fillRect(ctx, 0, 0, ox, oy, q.topLeft.color);
-  fillRect(ctx, ox, 0, W - ox, oy, q.topRight.color);
-  fillRect(ctx, 0, oy, ox, H - oy, q.bottomLeft.color);
-  fillRect(ctx, ox, oy, W - ox, H - oy, q.bottomRight.color);
+  fillRect(ctx, bx, by, ox - bx, oy - by, q.topLeft.color);
+  fillRect(ctx, ox, by, bx + bs - ox, oy - by, q.topRight.color);
+  fillRect(ctx, bx, oy, ox - bx, by + bs - oy, q.bottomLeft.color);
+  fillRect(ctx, ox, oy, bx + bs - ox, by + bs - oy, q.bottomRight.color);
   ctx.globalAlpha = 1;
-
-  // แกน
-  ctx.strokeStyle = 'rgba(255,255,255,.6)';
-  ctx.lineWidth = 2;
-  line(ctx, ox, 0, ox, H);
-  line(ctx, 0, oy, W, oy);
+  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 2;
+  line(ctx, ox, by, ox, by + bs);
+  line(ctx, bx, oy, bx + bs, oy);
+  ctx.restore();
 
   // badges
   const placed = characters.filter((c) => placements[c.id]);
   const imgs = await Promise.all(placed.map((c) => loadImg(avatarBadgeUrl(c.avatarUrl, 104))));
-  const R = Math.round(W * 0.033);
+  const R = Math.round(bs * 0.033 * (state.badgeScale || 1));
   placed.forEach((c, i) => {
     const p = placements[c.id];
-    drawBadge(ctx, imgs[i], c, p.x * W, p.y * H, R);
+    drawBadge(ctx, imgs[i], c, bx + p.x * bs, by + p.y * bs, R);
   });
 
-  // header แถวบน: logo+brand ซ้าย | แถวล่าง: ชื่อกราฟกลาง (ไม่ทับกัน)
-  const brandGap = 16;
-  const brandBottom = headerPad + logoSize;
-
-  try {
-    const logo = await loadImg('assets/whif_logo.jpg');
-    if (logo) {
-      const logoY = headerPad;
-      roundImage(ctx, logo, headerPad, logoY, logoSize, logoSize, 10);
-      const textX = headerPad + logoSize + brandGap;
-      const textY = logoY + logoSize / 2;
-      ctx.font = '700 22px "Anuphan", system-ui, sans-serif';
-      ctx.fillStyle = '#fff';
-      ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6;
-      textAt(ctx, 'BonkGraph', textX, textY - 10, 'left', 'middle');
-      ctx.font = '500 17px "Anuphan", system-ui, sans-serif';
-      textAt(ctx, 'by Bonkku', textX, textY + 12, 'left', 'middle');
-      ctx.shadowBlur = 0;
-    }
-  } catch (_) {}
-
-  const title = state.title || "Character's Flag";
-  const titleY = brandBottom + 20;
-  const titleSidePad = 32;
-  const titleMaxW = W - titleSidePad * 2;
-  let titleFont = 36;
-  ctx.font = `700 ${titleFont}px "Anuphan", system-ui, sans-serif`;
-  while (titleFont > 20 && ctx.measureText(title).width > titleMaxW) {
-    titleFont -= 2;
-    ctx.font = `700 ${titleFont}px "Anuphan", system-ui, sans-serif`;
-  }
-  ctx.fillStyle = '#fff';
-  ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 8;
-  textAt(ctx, title, W / 2, titleY, 'center', 'top');
-  ctx.shadowBlur = 0;
-
-  const headerBottom = titleY + titleFont + 16;
-
-  // ป้าย quadrant (ใต้ header)
-  ctx.font = '600 26px "Anuphan", system-ui, sans-serif';
-  drawCorner(ctx, q.topLeft.label, 20, headerBottom, 'left', 'top');
-  drawCorner(ctx, q.topRight.label, W - 20, headerBottom, 'right', 'top');
-  drawCorner(ctx, q.bottomLeft.label, 20, H - 20, 'left', 'bottom');
-  drawCorner(ctx, q.bottomRight.label, W - 20, H - 20, 'right', 'bottom');
+  // ป้าย quadrant (มุมกราฟ)
+  ctx.font = `600 26px ${CFONT}`;
+  drawCorner(ctx, q.topLeft.label, bx + 16, by + 16, 'left', 'top');
+  drawCorner(ctx, q.topRight.label, bx + bs - 16, by + 16, 'right', 'top');
+  drawCorner(ctx, q.bottomLeft.label, bx + 16, by + bs - 16, 'left', 'bottom');
+  drawCorner(ctx, q.bottomRight.label, bx + bs - 16, by + bs - 16, 'right', 'bottom');
 
   // ป้ายปลายแกน
-  const axisTopY = headerBottom + 4;
-  ctx.font = '500 22px "Anuphan", system-ui, sans-serif';
+  ctx.font = `500 22px ${CFONT}`;
   ctx.fillStyle = 'rgba(255,255,255,.85)';
-  textAt(ctx, template.axis.x.right, W - 14, oy, 'right', 'middle');
-  textAt(ctx, template.axis.x.left, 14, oy, 'left', 'middle');
-  textAt(ctx, template.axis.y.top, ox, axisTopY, 'center', 'top');
-  textAt(ctx, template.axis.y.bottom, ox, H - 14, 'center', 'bottom');
+  textAt(ctx, template.axis.x.right, bx + bs - 14, oy, 'right', 'middle');
+  textAt(ctx, template.axis.x.left, bx + 14, oy, 'left', 'middle');
+  textAt(ctx, template.axis.y.top, ox, by + 14, 'center', 'top');
+  textAt(ctx, template.axis.y.bottom, ox, by + bs - 14, 'center', 'bottom');
+
+  // ---- brand ซ้ายบน (ark_logo วงกลม + ข้อความ) ----
+  try {
+    const logo = await loadImg('assets/ark_logo.png');
+    if (logo) circleImage(ctx, logo, sidePad + logoSize / 2, brandTop + logoSize / 2, logoSize / 2);
+  } catch (_) {}
+  ctx.font = `600 26px ${CFONT}`;
+  ctx.fillStyle = '#fff';
+  textAt(ctx, 'BonkGraph by Bonkku for WHIF', sidePad + logoSize + 16, brandTop + logoSize / 2, 'left', 'middle');
+
+  // ---- title (กลางบน, สี/ขนาดปรับได้) ----
+  let title = state.title || "Character's Flag";
+  let tp = titlePx;
+  ctx.font = `700 ${tp}px ${CFONT}`;
+  const titleMaxW = W - sidePad * 2;
+  while (tp > 16 && ctx.measureText(title).width > titleMaxW) {
+    tp -= 2; ctx.font = `700 ${tp}px ${CFONT}`;
+  }
+  ctx.fillStyle = state.titleColor || '#ffffff';
+  textAt(ctx, title, W / 2, titleY + (titlePx - tp) / 2, 'center', 'top');
+
+  // ---- url ขวาล่าง ----
+  if (state.url) {
+    ctx.font = `500 22px ${CFONT}`;
+    ctx.fillStyle = 'rgba(255,255,255,.6)';
+    textAt(ctx, state.url, W - sidePad, H - 34, 'right', 'middle');
+  }
 
   canvas.toBlob((blob) => {
     if (!blob) { alert(t('failPng')); return; }
@@ -174,7 +172,7 @@ function drawBadge(ctx, img, char, x, y, R) {
     ctx.fillStyle = char.color;
     ctx.fillRect(x - R, y - R, 2 * R, 2 * R);
     ctx.fillStyle = '#fff';
-    ctx.font = `700 ${R}px "Anuphan", system-ui, sans-serif`;
+    ctx.font = `700 ${R}px ${CFONT}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText((char.name || '?').slice(0, 1), x, y);
   }
@@ -188,7 +186,7 @@ function drawBadge(ctx, img, char, x, y, R) {
   ctx.stroke();
 
   // ชื่อใต้ badge
-  ctx.font = '600 18px "Anuphan", system-ui, sans-serif';
+  ctx.font = `600 18px ${CFONT}`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   const name = char.name;
   const tw = ctx.measureText(name).width;
@@ -205,16 +203,10 @@ function showGimmick(onYes, onNo) {
   back.className = 'modal-back';
   back.innerHTML = `
     <div class="modal">
-      <div class="modal-title">Is Ark-chan cute? 🥺</div>
-      <div class="modal-sub">
-        <div>น้องอาร์คน่ารักไหม?</div>
-        <div>アークちゃんは可愛い？</div>
-        <div>아크짱 귀엽지?</div>
-        <div>阿克醬可愛嗎？</div>
-      </div>
+      <div class="modal-title">${t('gimmickCute')}</div>
       <div class="modal-actions">
-        <button class="btn-yes">Yes 💖</button>
-        <button class="btn-no">No</button>
+        <button class="btn-yes">${t('gimmickYes')}</button>
+        <button class="btn-no">${t('gimmickNo')}</button>
       </div>
     </div>`;
   document.body.appendChild(back);
@@ -224,22 +216,16 @@ function showGimmick(onYes, onNo) {
   back.addEventListener('click', (e) => { if (e.target === back) close(); });
 }
 
-// popup ตอนตอบ No — น้องอาร์คอาละวาด (หลายภาษา)
+// popup ตอนตอบ No — น้องอาร์คอาละวาด (ภาษาที่เลือก)
 function showTantrum() {
   const back = document.createElement('div');
   back.className = 'modal-back';
   back.innerHTML = `
     <div class="modal">
-      <div class="modal-title">😾 Ark-chan threw a tantrum!</div>
-      <div class="modal-sub">
-        <div>Your data bounced right back to where it was...</div>
-        <div>น้องอาร์คอาละวาด! ข้อมูลของคุณเด้งกลับไปอยู่ที่เดิม...</div>
-        <div>アークちゃんが大暴れ！データは元の場所に戻っちゃった…</div>
-        <div>아크짱이 난동을 부렸어요! 데이터가 원래 자리로 되돌아갔어요…</div>
-        <div>阿克醬大鬧脾氣！你的資料被彈回原本的位置了…</div>
-      </div>
+      <div class="modal-title">${t('tantrumTitle')}</div>
+      <div class="modal-sub"><div>${t('tantrumMsg')}</div></div>
       <div class="modal-actions">
-        <button class="btn-ok">OK</button>
+        <button class="btn-ok">${t('gimmickOk')}</button>
       </div>
     </div>`;
   document.body.appendChild(back);
@@ -276,6 +262,14 @@ function roundImage(ctx, img, x, y, w, h, r) {
   roundRect(ctx, x, y, w, h, r);
   ctx.clip();
   ctx.drawImage(img, x, y, w, h);
+  ctx.restore();
+}
+function circleImage(ctx, img, cx, cy, r) {
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+  const s = Math.max((2 * r) / img.width, (2 * r) / img.height);
+  const w = img.width * s, h = img.height * s;
+  ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
   ctx.restore();
 }
 function loadImg(url) {

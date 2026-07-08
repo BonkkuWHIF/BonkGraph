@@ -21,38 +21,43 @@
 </head>
 <body>
   <header id="topbar">
-    <div class="brand">
-      <img src="assets/whif_logo.jpg" alt="whif" class="logo">
-      <div class="brand-txt">
-        <span class="brand-name">BonkGraph</span>
-        <span class="brand-by">by Bonkku</span>
-      </div>
+    <div id="lang-dd" class="lang-dd">
+      <button id="lang-btn" class="lang-btn" type="button" data-i18n-title="tipLang" title="Language" aria-label="Language"></button>
+      <div id="lang-menu" class="lang-menu" hidden></div>
     </div>
-
-    <input id="graph-title" class="graph-title" type="text" placeholder="Character's Flag" aria-label="ชื่อกราฟ">
-
-    <div class="actions">
-      <select id="lang-select" data-i18n-title="tipLang" title="Language" aria-label="Language"></select>
-      <select id="tpl-select" data-i18n-title="tipTemplate" title="Choose template">
-        <option value="flag">Character Flags</option>
-        <option value="mbti">MBTI</option>
-        <option value="blank">Custom (Blank)</option>
-      </select>
-      <button id="btn-template" data-i18n="editGraph" data-i18n-title="tipEditTpl" title="Edit template">⚙️ Edit Graph</button>
-      <button id="btn-import-json" data-i18n-title="tipImport" title="Import JSON">📥</button>
-      <button id="btn-export-json" data-i18n-title="tipSaveJson" title="Save JSON">💾</button>
-      <button id="btn-export-png" class="primary" data-i18n-title="tipSavePng" title="Save as PNG">🖼️ PNG</button>
-      <button id="btn-reset" data-i18n-title="tipClearBoard" title="Clear board">🧹</button>
-    </div>
+    <select id="tpl-select" data-i18n-title="tipTemplate" title="Choose template">
+      <option value="flag">Character Flags</option>
+      <option value="mbti">MBTI</option>
+      <option value="blank">Custom (Blank)</option>
+    </select>
+    <button id="btn-template" data-i18n="editGraph" data-i18n-title="tipEditTpl" title="Edit template">⚙️ Edit Graph</button>
+    <span class="topbar-spacer"></span>
+    <button id="btn-import-json" data-i18n-title="tipImport" title="Import JSON">📥</button>
+    <button id="btn-export-json" data-i18n-title="tipSaveJson" title="Save JSON">💾</button>
+    <button id="btn-export-png" class="primary" data-i18n-title="tipSavePng" title="Save as PNG">🖼️ PNG</button>
+    <button id="btn-reset" data-i18n-title="tipClearBoard" title="Clear board">🧹</button>
   </header>
 
-  <!-- panel แก้ไข template (ซ่อนไว้) -->
+  <!-- panel แก้ไข template + การแสดงผล (ซ่อนไว้) -->
   <section id="tpl-panel" class="tpl-panel">
+    <div id="display-fields" class="display-fields">
+      <label><span data-i18n="titleColor">Title color</span><input id="ctl-title-color" type="color"></label>
+      <label><span data-i18n="titleSize">Title size</span><input id="ctl-title-size" type="range" min="2" max="7" step="0.2"></label>
+      <label><span data-i18n="badgeSize">Badge size</span><input id="ctl-badge-size" type="range" min="0.5" max="2" step="0.1"></label>
+    </div>
     <div id="tpl-fields"></div>
   </section>
 
   <main id="stage">
-    <div id="board" aria-label="Graph board"></div>
+    <div class="frame-brand">
+      <img class="frame-logo" src="assets/ark_logo.png" alt="Ark">
+      <span class="frame-brand-txt">BonkGraph by Bonkku for WHIF</span>
+    </div>
+    <input id="graph-title" class="frame-title" type="text" placeholder="Character's Flag" aria-label="Graph title">
+    <div class="board-wrap">
+      <div id="board" aria-label="Graph board"></div>
+    </div>
+    <input id="frame-url" class="frame-url" type="text" value="https://www.whif.io/" spellcheck="false" aria-label="URL">
   </main>
 
   <section id="tray-wrap">

@@ -35,31 +35,8 @@ body {
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
 }
-.brand { display: flex; align-items: center; gap: 8px; }
-.logo { width: 38px; height: 38px; border-radius: 10px; }
-.brand-txt { display: flex; flex-direction: column; line-height: 1.1; }
-.brand-name {
-  font-weight: 700; font-size: 18px;
-  background: linear-gradient(90deg, #c084fc, #f472b6);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.brand-by { font-size: 11px; color: var(--muted); }
-
-.graph-title {
-  flex: 1 1 180px;
-  min-width: 120px;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 15px;
-  font-weight: 600;
-}
-.graph-title::placeholder { color: var(--muted); }
-
-.actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.actions select, .actions button {
+.topbar-spacer { flex: 1; }
+#topbar select, #topbar > button {
   background: var(--panel-2);
   color: var(--text);
   border: 1px solid var(--line);
@@ -68,11 +45,38 @@ body {
   font-size: 14px;
   cursor: pointer;
 }
-.actions button:hover, .actions select:hover { border-color: var(--accent); }
-.actions .primary {
+#topbar > button:hover, #topbar select:hover { border-color: var(--accent); }
+#topbar .primary {
   background: linear-gradient(90deg, var(--accent), var(--accent-2));
   border: none; font-weight: 700;
 }
+
+/* ---------- custom language dropdown (with flag SVGs) ---------- */
+.lang-dd { position: relative; }
+.lang-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 9px; font-size: 14px; cursor: pointer;
+}
+.lang-btn:hover { border-color: var(--accent); }
+.lang-flag { width: 21px; height: 14px; border-radius: 2px; overflow: hidden; display: inline-flex; flex: 0 0 auto; }
+.lang-flag svg { width: 100%; height: 100%; display: block; }
+.lang-btn .caret { font-size: 10px; color: var(--muted); }
+.lang-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 60;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 4px; min-width: 130px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.5);
+}
+.lang-menu[hidden] { display: none; }
+.lang-menu button {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: none; border: none; color: var(--text);
+  padding: 7px 9px; border-radius: 7px; font-size: 14px; cursor: pointer; text-align: left;
+}
+.lang-menu button:hover { background: var(--panel-2); }
+.lang-menu button.active { background: var(--panel-2); }
 
 /* ---------- template panel ---------- */
 .tpl-panel {
@@ -88,6 +92,17 @@ body {
   overflow: auto;
 }
 .tpl-panel.open { display: block; }
+.display-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.display-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.display-fields input[type="color"] { width: 44px; height: 28px; border: none; background: none; padding: 0; cursor: pointer; }
+.display-fields input[type="range"] { width: 100%; accent-color: var(--accent); }
 .tpl-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -114,17 +129,61 @@ body {
   width: 34px; height: 30px; border: none; background: none; padding: 0; cursor: pointer;
 }
 
-/* ---------- stage / board ---------- */
+/* ---------- stage = frame (title/brand/url อยู่นอกกราฟ พื้นดำ) ---------- */
 #stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 14px 18px 34px;
+  min-height: 0;
+  position: relative;
+  background: #000;              /* พื้นหลังนอกกราฟ = ดำ */
+  --badge-scale: 1;
+}
+.frame-brand { display: flex; align-items: center; gap: 9px; align-self: flex-start; }
+.frame-logo {
+  width: 36px; height: 36px; border-radius: 50%;   /* logo วงกลม (ark_logo) */
+  object-fit: cover; background: #1a1526;
+}
+.frame-brand-txt { font-weight: 600; font-size: 14px; color: #fff; }
+.frame-title {
+  align-self: center;
+  width: 100%;
+  text-align: center;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--title-color, #ffffff);
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: clamp(16px, var(--title-scale, 3.2) * 1cqw, 80px);
+  padding: 6px 4px 2px;
+}
+.frame-title::placeholder { color: rgba(255,255,255,.4); }
+.frame-title:focus { border-bottom: 1px dashed var(--accent); }
+.frame-url {
+  position: absolute;
+  right: 18px; bottom: 8px;
+  max-width: 65%;
+  background: transparent; border: none; outline: none;
+  color: rgba(255,255,255,.55);
+  font-family: var(--font);
+  font-size: 12px; text-align: right;
+}
+.frame-url:focus { color: rgba(255,255,255,.85); border-bottom: 1px dashed var(--accent); }
+
+.board-wrap {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
   min-height: 0;
+  margin-top: 6px;
   container-type: size;
-  container-name: stage;
+  container-name: boardwrap;
 }
+#stage { container-type: size; container-name: stage; }
 #board {
   position: relative;
   width: min(100cqw, 100cqh, 900px);
@@ -136,7 +195,7 @@ body {
   touch-action: none;   /* กัน browser scroll ตอนลากบนมือถือ */
 }
 @supports not (container-type: size) {
-  #board { width: min(92vw, calc(100vh - 220px), 900px); }
+  #board { width: min(88vw, calc(100vh - 300px), 820px); }
 }
 
 .gfx { pointer-events: none; }
@@ -208,7 +267,7 @@ body {
   background: var(--flag, #2a2540);
   color: #fff; font-weight: 700; font-size: 20px;
 }
-.badge.placed.noimg::before { width: 52px; height: 52px; }
+.badge.placed.noimg::before { width: calc(52px * var(--badge-scale, 1)); height: calc(52px * var(--badge-scale, 1)); }
 .badge-name {
   font-size: 10px;
   line-height: 1.25;
@@ -226,7 +285,7 @@ body {
   z-index: 3;
   width: auto;
 }
-.badge.placed img { width: 52px; height: 52px; }
+.badge.placed img { width: calc(52px * var(--badge-scale, 1)); height: calc(52px * var(--badge-scale, 1)); }
 /* ชื่อบนกระดาน: ชิปพื้นเข้มให้อ่านออกแม้ทับกัน + wrap แคบ ลดบานด้านข้าง */
 .badge.placed .badge-name {
   background: rgba(12, 10, 22, .8);
