@@ -32,16 +32,17 @@
     <input id="graph-title" class="graph-title" type="text" placeholder="Character's Flag" aria-label="ชื่อกราฟ">
 
     <div class="actions">
-      <select id="tpl-select" title="Choose template">
+      <select id="lang-select" data-i18n-title="tipLang" title="Language" aria-label="Language"></select>
+      <select id="tpl-select" data-i18n-title="tipTemplate" title="Choose template">
         <option value="flag">Character Flags</option>
         <option value="mbti">MBTI</option>
         <option value="blank">Custom (Blank)</option>
       </select>
-      <button id="btn-template" title="Edit template">⚙️ Edit Graph</button>
-      <button id="btn-import-json" title="Import JSON">📥</button>
-      <button id="btn-export-json" title="Save JSON">💾</button>
-      <button id="btn-export-png" class="primary" title="Save as PNG">🖼️ PNG</button>
-      <button id="btn-reset" title="Clear board">🧹</button>
+      <button id="btn-template" data-i18n="editGraph" data-i18n-title="tipEditTpl" title="Edit template">⚙️ Edit Graph</button>
+      <button id="btn-import-json" data-i18n-title="tipImport" title="Import JSON">📥</button>
+      <button id="btn-export-json" data-i18n-title="tipSaveJson" title="Save JSON">💾</button>
+      <button id="btn-export-png" class="primary" data-i18n-title="tipSavePng" title="Save as PNG">🖼️ PNG</button>
+      <button id="btn-reset" data-i18n-title="tipClearBoard" title="Clear board">🧹</button>
     </div>
   </header>
 
@@ -56,11 +57,11 @@
 
   <section id="tray-wrap">
     <div class="tray-head">
-      <span class="tray-title">Characters (<span id="tray-count">0</span>)</span>
-      <span class="tray-hint">Drag onto the board • drag out to return</span>
+      <span class="tray-title"><span data-i18n="charactersLabel">Characters</span> (<span id="tray-count">0</span>)</span>
+      <span class="tray-hint" data-i18n="dragHint">Drag onto the board • drag out to return</span>
       <span class="tray-tools">
-        <button id="btn-add-char" title="Add character (upload image or paste JSON)">➕ Add Character</button>
-        <button id="btn-clear-chars" title="Remove all added characters">🗑️</button>
+        <button id="btn-add-char" data-i18n="addCharacter" data-i18n-title="tipAddChar" title="Add character (upload image or paste JSON)">➕ Add Character</button>
+        <button id="btn-clear-chars" data-i18n-title="tipRemoveChars" title="Remove all added characters">🗑️</button>
       </span>
     </div>
     <div id="tray"></div>

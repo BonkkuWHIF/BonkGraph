@@ -1,6 +1,7 @@
 // export/import JSON (ข้อ 9), export PNG (ข้อ 10) + gimmick popup
 
 import { avatarBadgeUrl } from './data.js';
+import { t } from './i18n.js';
 
 // ---------- JSON ----------
 export function exportJSON(state) {
@@ -30,7 +31,7 @@ export function importJSON(onLoad) {
         const snap = JSON.parse(reader.result);
         onLoad(snap);
       } catch (err) {
-        alert('Invalid file: ' + err.message);
+        alert(t('invalidFile') + err.message);
       }
     };
     reader.readAsText(file);
@@ -152,7 +153,7 @@ async function renderCanvasAndDownload(state, board) {
   textAt(ctx, template.axis.y.bottom, ox, H - 14, 'center', 'bottom');
 
   canvas.toBlob((blob) => {
-    if (!blob) { alert('Failed to create PNG'); return; }
+    if (!blob) { alert(t('failPng')); return; }
     download(blob, safeName(state.title || 'bonkgraph') + '.png');
   }, 'image/png');
 }

@@ -1,6 +1,7 @@
 import { loadCharacters, avatarBadgeUrl } from './data.js';
 import { cloneTemplate, TEMPLATES, QUADRANT_KEYS } from './templates.js';
 import { exportJSON, importJSON, exportPNG } from './export.js';
+import { t, setLang, getLang, applyI18n, LANGS } from './i18n.js';
 
 // ---------- STATE ----------
 // พิกัดทุกอย่างเก็บเป็น "สัดส่วน 0..1" ของกระดาน เพื่อ resize ได้โดยไม่เพี้ยน
@@ -98,8 +99,8 @@ function ensureOriginHandle() {
   if (oh) return oh;
   oh = document.createElement('div');
   oh.className = 'origin-handle';
-  oh.title = 'Drag to move the origin (0,0)';
-  oh.setAttribute('aria-label', 'Drag to move the origin (0,0)');
+  oh.title = t('origin');
+  oh.setAttribute('aria-label', t('origin'));
   oh.addEventListener('pointerdown', startOriginDrag);
   el.board.appendChild(oh);
   return oh;
@@ -420,9 +421,9 @@ function addCustomCharacter(data) {
 function addCharactersFromJsonText(text) {
   let data = JSON.parse(text);
   if (data && Array.isArray(data.characters)) data = data.characters;
-  if (!Array.isArray(data)) throw new Error('Must be an array of {name, avatarUrl}');
+  if (!Array.isArray(data)) throw new Error(t('errNotArray'));
   const valid = data.filter((o) => o && (o.name || o.avatarUrl || o.image || o.imageUrl || o.avatar));
-  if (!valid.length) throw new Error('No characters with name/avatarUrl found');
+  if (!valid.length) throw new Error(t('errNoChar'));
   valid.forEach((o) => state.customCharacters.push(normalizeCustom(o)));
   rebuildPool();
   renderBadges();
@@ -432,10 +433,10 @@ function addCharactersFromJsonText(text) {
 
 function clearCustomCharacters() {
   if (!state.customCharacters.length) {
-    alert('No custom characters yet');
+    alert(t('noCustom'));
     return;
   }
-  if (!confirm(`Remove ${state.customCharacters.length} custom character(s)? (Default characters are kept.)`)) return;
+  if (!confirm(t('confirmRemoveCustom', { n: state.customCharacters.length }))) return;
   // เอา placement ของ custom ออกด้วย
   for (const c of state.customCharacters) delete state.placements[c.id];
   state.customCharacters = [];
@@ -474,29 +475,29 @@ function showAddCharModal() {
   back.className = 'modal-back';
   back.innerHTML = `
     <div class="modal add-char-modal">
-      <div class="modal-title">Add Character</div>
+      <div class="modal-title">${t('addCharTitle')}</div>
       <div class="tabs">
-        <button class="tab active" data-tab="upload">Upload Image</button>
-        <button class="tab" data-tab="json">Paste JSON</button>
+        <button class="tab active" data-tab="upload">${t('tabUpload')}</button>
+        <button class="tab" data-tab="json">${t('tabJson')}</button>
       </div>
 
       <div class="tab-body" data-body="upload">
         <label class="drop">
           <input type="file" id="ac-file" accept="image/*">
-          <span class="drop-text">Choose / drop an image</span>
+          <span class="drop-text">${t('dropText')}</span>
           <img id="ac-preview" alt="">
         </label>
-        <input id="ac-name" type="text" placeholder="Character name">
-        <button id="ac-add" class="btn-primary">Add to tray</button>
+        <input id="ac-name" type="text" placeholder="${escapeAttr(t('charNamePh'))}">
+        <button id="ac-add" class="btn-primary">${t('addToTray')}</button>
       </div>
 
       <div class="tab-body" data-body="json" hidden>
         <textarea id="ac-json" placeholder='[{"name":"Ark","avatarUrl":"https://..."}]'></textarea>
-        <div class="hint">Only <b>name</b> and <b>avatarUrl</b> (avatarUrl is an image URL)</div>
-        <button id="ac-json-add" class="btn-primary">Load into tray</button>
+        <div class="hint">${t('jsonHint')}</div>
+        <button id="ac-json-add" class="btn-primary">${t('loadIntoTray')}</button>
       </div>
 
-      <button class="modal-close" title="Close">✕</button>
+      <button class="modal-close" title="${escapeAttr(t('close'))}">✕</button>
     </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
@@ -504,11 +505,11 @@ function showAddCharModal() {
   back.querySelector('.modal-close').addEventListener('click', close);
 
   // สลับแท็บ
-  back.querySelectorAll('.tab').forEach((t) => {
-    t.addEventListener('click', () => {
-      back.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === t));
+  back.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      back.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === tab));
       back.querySelectorAll('.tab-body').forEach((b) => {
-        b.hidden = b.dataset.body !== t.dataset.tab;
+        b.hidden = b.dataset.body !== tab.dataset.tab;
       });
     });
   });
@@ -529,8 +530,8 @@ function showAddCharModal() {
     } catch (err) { alert(err.message); }
   });
   back.querySelector('#ac-add').addEventListener('click', () => {
-    if (!pendingDataUrl) { alert('Choose an image first'); return; }
-    if (!nameInp.value.trim()) { alert('Enter a character name'); return; }
+    if (!pendingDataUrl) { alert(t('alertChooseImage')); return; }
+    if (!nameInp.value.trim()) { alert(t('alertEnterName')); return; }
     addCustomCharacter({ name: nameInp.value, avatarUrl: pendingDataUrl });
     close();
   });
@@ -538,37 +539,37 @@ function showAddCharModal() {
   // โหมด JSON
   back.querySelector('#ac-json-add').addEventListener('click', () => {
     const txt = back.querySelector('#ac-json').value.trim();
-    if (!txt) { alert('Paste JSON first'); return; }
+    if (!txt) { alert(t('alertPasteJson')); return; }
     try {
       const n = addCharactersFromJsonText(txt);
       close();
-      alert(`Added ${n} character(s)`);
-    } catch (err) { alert('Invalid JSON: ' + err.message); }
+      alert(t('added', { n }));
+    } catch (err) { alert(t('invalidJson') + err.message); }
   });
 }
 
 // ---------- template controls ----------
 function buildTemplateEditor() {
   const box = document.getElementById('tpl-fields');
-  const t = state.template;
+  const tpl = state.template;
 
   const rows = [
-    ['Graph title', 'title', t.title],
-    ['Axis X right', 'ax-x-right', t.axis.x.right],
-    ['Axis X left', 'ax-x-left', t.axis.x.left],
-    ['Axis Y top', 'ax-y-top', t.axis.y.top],
-    ['Axis Y bottom', 'ax-y-bottom', t.axis.y.bottom],
+    [t('graphTitle'), 'title', tpl.title],
+    [t('axisXRight'), 'ax-x-right', tpl.axis.x.right],
+    [t('axisXLeft'), 'ax-x-left', tpl.axis.x.left],
+    [t('axisYTop'), 'ax-y-top', tpl.axis.y.top],
+    [t('axisYBottom'), 'ax-y-bottom', tpl.axis.y.bottom],
   ];
   let html = '<div class="tpl-grid">';
   for (const [label, key, val] of rows) {
     html += `<label>${label}<input data-k="${key}" value="${escapeAttr(val)}"></label>`;
   }
   html += '</div><div class="tpl-quads">';
-  const qlab = { topLeft: 'Top-left', topRight: 'Top-right', bottomLeft: 'Bottom-left', bottomRight: 'Bottom-right' };
+  const qlab = { topLeft: t('quadTL'), topRight: t('quadTR'), bottomLeft: t('quadBL'), bottomRight: t('quadBR') };
   for (const k of QUADRANT_KEYS) {
-    const qq = t.quadrants[k];
+    const qq = tpl.quadrants[k];
     html += `<div class="tpl-quad"><b>${qlab[k]}</b>
-      <input data-q="${k}" data-f="label" value="${escapeAttr(qq.label)}" placeholder="Zone name">
+      <input data-q="${k}" data-f="label" value="${escapeAttr(qq.label)}" placeholder="${escapeAttr(t('zoneName'))}">
       <input data-q="${k}" data-f="color" type="color" value="${qq.color}"></div>`;
   }
   html += '</div>';
@@ -578,16 +579,16 @@ function buildTemplateEditor() {
     inp.addEventListener('input', () => {
       const k = inp.dataset.k;
       if (k === 'title') { state.title = inp.value; el.title.value = inp.value; }
-      else if (k === 'ax-x-right') t.axis.x.right = inp.value;
-      else if (k === 'ax-x-left') t.axis.x.left = inp.value;
-      else if (k === 'ax-y-top') t.axis.y.top = inp.value;
-      else if (k === 'ax-y-bottom') t.axis.y.bottom = inp.value;
+      else if (k === 'ax-x-right') tpl.axis.x.right = inp.value;
+      else if (k === 'ax-x-left') tpl.axis.x.left = inp.value;
+      else if (k === 'ax-y-top') tpl.axis.y.top = inp.value;
+      else if (k === 'ax-y-bottom') tpl.axis.y.bottom = inp.value;
       renderGraph(); saveLocal();
     });
   });
   box.querySelectorAll('input[data-q]').forEach((inp) => {
     inp.addEventListener('input', () => {
-      t.quadrants[inp.dataset.q][inp.dataset.f] = inp.value;
+      tpl.quadrants[inp.dataset.q][inp.dataset.f] = inp.value;
       renderGraph(); saveLocal();
     });
   });
@@ -641,7 +642,7 @@ function wireUI() {
   });
 
   document.getElementById('btn-reset').addEventListener('click', () => {
-    if (!confirm('Clear the whole board? Characters will return to the tray.')) return;
+    if (!confirm(t('confirmClearBoard'))) return;
     state.placements = {};
     renderBadges();
     saveLocal();
@@ -649,12 +650,28 @@ function wireUI() {
 
   document.getElementById('btn-add-char').addEventListener('click', showAddCharModal);
   document.getElementById('btn-clear-chars').addEventListener('click', clearCustomCharacters);
+
+  // ตัวเลือกภาษา
+  const langSel = document.getElementById('lang-select');
+  langSel.innerHTML = LANGS.map((l) => `<option value="${l.code}">${l.label}</option>`).join('');
+  langSel.value = getLang();
+  langSel.addEventListener('change', () => {
+    setLang(langSel.value);
+    localStorage.setItem(LANG_KEY, getLang());
+    applyI18n(document);
+    buildTemplateEditor();   // field labels ในตัวแก้ template
+  });
 }
+
+const LANG_KEY = 'bonkgraph_lang';
 
 // ---------- init ----------
 async function init() {
   cacheDom();
+  const savedLang = localStorage.getItem(LANG_KEY);
+  if (savedLang) setLang(savedLang);
   wireUI();
+  applyI18n(document);   // แปล static UI ตามภาษาที่บันทึกไว้
   loadLocal();
   if (!state.title) state.title = state.template.title;
 
@@ -669,7 +686,7 @@ async function init() {
   } catch (err) {
     defaultCharacters = [];
     document.getElementById('tray').innerHTML =
-      `<div class="tray-error">Failed to load data: ${err.message}</div>`;
+      `<div class="tray-error">${t('failLoad')}${err.message}</div>`;
   }
   rebuildPool();   // defaults + custom (จาก localStorage/snapshot)
   renderAll();
