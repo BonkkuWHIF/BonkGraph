@@ -30,7 +30,7 @@ export function importJSON(onLoad) {
         const snap = JSON.parse(reader.result);
         onLoad(snap);
       } catch (err) {
-        alert('ไฟล์ไม่ถูกต้อง: ' + err.message);
+        alert('Invalid file: ' + err.message);
       }
     };
     reader.readAsText(file);
@@ -152,7 +152,7 @@ async function renderCanvasAndDownload(state, board) {
   textAt(ctx, template.axis.y.bottom, ox, H - 14, 'center', 'bottom');
 
   canvas.toBlob((blob) => {
-    if (!blob) { alert('สร้าง PNG ไม่สำเร็จ'); return; }
+    if (!blob) { alert('Failed to create PNG'); return; }
     download(blob, safeName(state.title || 'bonkgraph') + '.png');
   }, 'image/png');
 }
@@ -204,10 +204,10 @@ function showGimmick(onYes, onNo) {
   back.className = 'modal-back';
   back.innerHTML = `
     <div class="modal">
-      <div class="modal-title">น้องอาร์น่ารักไหม? 🥺</div>
+      <div class="modal-title">Is Ark-chan cute? 🥺</div>
       <div class="modal-actions">
-        <button class="btn-yes">ใช่ 💖</button>
-        <button class="btn-no">ไม่</button>
+        <button class="btn-yes">Yes 💖</button>
+        <button class="btn-no">No</button>
       </div>
     </div>`;
   document.body.appendChild(back);

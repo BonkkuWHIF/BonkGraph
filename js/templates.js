@@ -13,17 +13,17 @@
 export const TEMPLATES = {
   flag: {
     id: 'flag',
-    name: 'ธงตัวละคร (Flag)',
+    name: 'Character Flags',
     title: "Character's Flag",
     axis: {
-      x: { left: 'อันตราย', right: 'ปลอดภัย' },
-      y: { top: 'เท่/นิ่ง', bottom: 'อบอุ่น/นัว' },
+      x: { left: 'Dangerous', right: 'Safe' },
+      y: { top: 'Cool / Calm', bottom: 'Warm / Sweet' },
     },
     quadrants: {
-      topRight: { label: 'ธงเขียว', color: '#22c55e' },
-      bottomRight: { label: 'ธงเหลือง', color: '#eab308' },
-      bottomLeft: { label: 'ธงแดง', color: '#ef4444' },
-      topLeft: { label: 'ธงดำ', color: '#4b5563' },
+      topRight: { label: 'Green Flag', color: '#22c55e' },
+      bottomRight: { label: 'Yellow Flag', color: '#eab308' },
+      bottomLeft: { label: 'Red Flag', color: '#ef4444' },
+      topLeft: { label: 'Black Flag', color: '#4b5563' },
     },
   },
 
@@ -36,20 +36,20 @@ export const TEMPLATES = {
       y: { top: 'Thinking (T)', bottom: 'Feeling (F)' },
     },
     quadrants: {
-      topRight: { label: 'ET · ผู้นำ/นักคิดเปิดเผย', color: '#3b82f6' },
-      bottomRight: { label: 'EF · นักการทูต/ขี้เล่น', color: '#eab308' },
-      bottomLeft: { label: 'IF · อ่อนโยน/เก็บตัว', color: '#22c55e' },
-      topLeft: { label: 'IT · นักวิเคราะห์เงียบ', color: '#8b5cf6' },
+      topRight: { label: 'ET · Bold Thinker', color: '#3b82f6' },
+      bottomRight: { label: 'EF · Social / Playful', color: '#eab308' },
+      bottomLeft: { label: 'IF · Gentle / Reserved', color: '#22c55e' },
+      topLeft: { label: 'IT · Quiet Analyst', color: '#8b5cf6' },
     },
   },
 
   blank: {
     id: 'blank',
-    name: 'ว่าง (Custom)',
+    name: 'Blank (Custom)',
     title: "Character's Flag",
     axis: {
-      x: { left: 'ซ้าย', right: 'ขวา' },
-      y: { top: 'บน', bottom: 'ล่าง' },
+      x: { left: 'Left', right: 'Right' },
+      y: { top: 'Top', bottom: 'Bottom' },
     },
     quadrants: {
       topRight: { label: '', color: '#38bdf8' },

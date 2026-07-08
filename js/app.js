@@ -98,8 +98,8 @@ function ensureOriginHandle() {
   if (oh) return oh;
   oh = document.createElement('div');
   oh.className = 'origin-handle';
-  oh.title = 'ลากเพื่อย้ายจุด 0,0';
-  oh.setAttribute('aria-label', 'ลากเพื่อย้ายจุด 0,0');
+  oh.title = 'Drag to move the origin (0,0)';
+  oh.setAttribute('aria-label', 'Drag to move the origin (0,0)');
   oh.addEventListener('pointerdown', startOriginDrag);
   el.board.appendChild(oh);
   return oh;
@@ -400,7 +400,7 @@ function genId() {
 function normalizeCustom(o) {
   return {
     id: o.id || genId(),
-    name: (o.name || '').toString().trim() || 'ไม่มีชื่อ',
+    name: (o.name || '').toString().trim() || 'Unnamed',
     avatarUrl: (o.avatarUrl || o.avatar || o.image || o.imageUrl || '').toString().trim(),
     color: o.color || DEFAULT_FLAG,
     custom: true,
@@ -420,9 +420,9 @@ function addCustomCharacter(data) {
 function addCharactersFromJsonText(text) {
   let data = JSON.parse(text);
   if (data && Array.isArray(data.characters)) data = data.characters;
-  if (!Array.isArray(data)) throw new Error('ต้องเป็น array ของ {name, avatarUrl}');
+  if (!Array.isArray(data)) throw new Error('Must be an array of {name, avatarUrl}');
   const valid = data.filter((o) => o && (o.name || o.avatarUrl || o.image || o.imageUrl || o.avatar));
-  if (!valid.length) throw new Error('ไม่พบตัวละครที่มี name/avatarUrl');
+  if (!valid.length) throw new Error('No characters with name/avatarUrl found');
   valid.forEach((o) => state.customCharacters.push(normalizeCustom(o)));
   rebuildPool();
   renderBadges();
@@ -432,10 +432,10 @@ function addCharactersFromJsonText(text) {
 
 function clearCustomCharacters() {
   if (!state.customCharacters.length) {
-    alert('ยังไม่มีตัวละครที่เพิ่มเอง');
+    alert('No custom characters yet');
     return;
   }
-  if (!confirm(`ลบตัวละครที่เพิ่มเอง ${state.customCharacters.length} ตัว? (ตัวละคร default ไม่ถูกลบ)`)) return;
+  if (!confirm(`Remove ${state.customCharacters.length} custom character(s)? (Default characters are kept.)`)) return;
   // เอา placement ของ custom ออกด้วย
   for (const c of state.customCharacters) delete state.placements[c.id];
   state.customCharacters = [];
@@ -447,12 +447,12 @@ function clearCustomCharacters() {
 // ย่อรูป + crop เป็นสี่เหลี่ยมจัตุรัส -> data URL (เล็กพอเก็บ localStorage + คมพอ export)
 function fileToSquareDataUrl(file, size = 256) {
   return new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) return reject(new Error('ไฟล์ไม่ใช่รูปภาพ'));
+    if (!file.type.startsWith('image/')) return reject(new Error('File is not an image'));
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('อ่านไฟล์ไม่ได้'));
+    reader.onerror = () => reject(new Error('Cannot read file'));
     reader.onload = () => {
       const img = new Image();
-      img.onerror = () => reject(new Error('รูปเสีย'));
+      img.onerror = () => reject(new Error('Broken image'));
       img.onload = () => {
         const s = Math.min(img.width, img.height);
         const sx = (img.width - s) / 2, sy = (img.height - s) / 2;
@@ -474,29 +474,29 @@ function showAddCharModal() {
   back.className = 'modal-back';
   back.innerHTML = `
     <div class="modal add-char-modal">
-      <div class="modal-title">เพิ่มตัวละคร</div>
+      <div class="modal-title">Add Character</div>
       <div class="tabs">
-        <button class="tab active" data-tab="upload">อัปโหลดรูป</button>
-        <button class="tab" data-tab="json">วาง JSON</button>
+        <button class="tab active" data-tab="upload">Upload Image</button>
+        <button class="tab" data-tab="json">Paste JSON</button>
       </div>
 
       <div class="tab-body" data-body="upload">
         <label class="drop">
           <input type="file" id="ac-file" accept="image/*">
-          <span class="drop-text">เลือกรูป / ลากรูปมาวาง</span>
+          <span class="drop-text">Choose / drop an image</span>
           <img id="ac-preview" alt="">
         </label>
-        <input id="ac-name" type="text" placeholder="ชื่อตัวละคร">
-        <button id="ac-add" class="btn-primary">เพิ่มลงถาด</button>
+        <input id="ac-name" type="text" placeholder="Character name">
+        <button id="ac-add" class="btn-primary">Add to tray</button>
       </div>
 
       <div class="tab-body" data-body="json" hidden>
-        <textarea id="ac-json" placeholder='[{"name":"อาร์ค","avatarUrl":"https://..."}]'></textarea>
-        <div class="hint">ใช้แค่ <b>name</b> และ <b>avatarUrl</b> (avatarUrl เป็น URL รูป)</div>
-        <button id="ac-json-add" class="btn-primary">โหลดเข้าถาด</button>
+        <textarea id="ac-json" placeholder='[{"name":"Ark","avatarUrl":"https://..."}]'></textarea>
+        <div class="hint">Only <b>name</b> and <b>avatarUrl</b> (avatarUrl is an image URL)</div>
+        <button id="ac-json-add" class="btn-primary">Load into tray</button>
       </div>
 
-      <button class="modal-close" title="ปิด">✕</button>
+      <button class="modal-close" title="Close">✕</button>
     </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
@@ -529,8 +529,8 @@ function showAddCharModal() {
     } catch (err) { alert(err.message); }
   });
   back.querySelector('#ac-add').addEventListener('click', () => {
-    if (!pendingDataUrl) { alert('เลือกรูปก่อน'); return; }
-    if (!nameInp.value.trim()) { alert('ใส่ชื่อตัวละคร'); return; }
+    if (!pendingDataUrl) { alert('Choose an image first'); return; }
+    if (!nameInp.value.trim()) { alert('Enter a character name'); return; }
     addCustomCharacter({ name: nameInp.value, avatarUrl: pendingDataUrl });
     close();
   });
@@ -538,12 +538,12 @@ function showAddCharModal() {
   // โหมด JSON
   back.querySelector('#ac-json-add').addEventListener('click', () => {
     const txt = back.querySelector('#ac-json').value.trim();
-    if (!txt) { alert('วาง JSON ก่อน'); return; }
+    if (!txt) { alert('Paste JSON first'); return; }
     try {
       const n = addCharactersFromJsonText(txt);
       close();
-      alert(`เพิ่ม ${n} ตัวละครแล้ว`);
-    } catch (err) { alert('JSON ไม่ถูกต้อง: ' + err.message); }
+      alert(`Added ${n} character(s)`);
+    } catch (err) { alert('Invalid JSON: ' + err.message); }
   });
 }
 
@@ -553,22 +553,22 @@ function buildTemplateEditor() {
   const t = state.template;
 
   const rows = [
-    ['ชื่อกราฟ', 'title', t.title],
-    ['แกน X ขวา', 'ax-x-right', t.axis.x.right],
-    ['แกน X ซ้าย', 'ax-x-left', t.axis.x.left],
-    ['แกน Y บน', 'ax-y-top', t.axis.y.top],
-    ['แกน Y ล่าง', 'ax-y-bottom', t.axis.y.bottom],
+    ['Graph title', 'title', t.title],
+    ['Axis X right', 'ax-x-right', t.axis.x.right],
+    ['Axis X left', 'ax-x-left', t.axis.x.left],
+    ['Axis Y top', 'ax-y-top', t.axis.y.top],
+    ['Axis Y bottom', 'ax-y-bottom', t.axis.y.bottom],
   ];
   let html = '<div class="tpl-grid">';
   for (const [label, key, val] of rows) {
     html += `<label>${label}<input data-k="${key}" value="${escapeAttr(val)}"></label>`;
   }
   html += '</div><div class="tpl-quads">';
-  const qlab = { topLeft: 'ซ้ายบน', topRight: 'ขวาบน', bottomLeft: 'ซ้ายล่าง', bottomRight: 'ขวาล่าง' };
+  const qlab = { topLeft: 'Top-left', topRight: 'Top-right', bottomLeft: 'Bottom-left', bottomRight: 'Bottom-right' };
   for (const k of QUADRANT_KEYS) {
     const qq = t.quadrants[k];
     html += `<div class="tpl-quad"><b>${qlab[k]}</b>
-      <input data-q="${k}" data-f="label" value="${escapeAttr(qq.label)}" placeholder="ชื่อโซน">
+      <input data-q="${k}" data-f="label" value="${escapeAttr(qq.label)}" placeholder="Zone name">
       <input data-q="${k}" data-f="color" type="color" value="${qq.color}"></div>`;
   }
   html += '</div>';
@@ -641,7 +641,7 @@ function wireUI() {
   });
 
   document.getElementById('btn-reset').addEventListener('click', () => {
-    if (!confirm('ล้างกระดานทั้งหมด? ตัวละครจะกลับลงถาด')) return;
+    if (!confirm('Clear the whole board? Characters will return to the tray.')) return;
     state.placements = {};
     renderBadges();
     saveLocal();
@@ -669,7 +669,7 @@ async function init() {
   } catch (err) {
     defaultCharacters = [];
     document.getElementById('tray').innerHTML =
-      `<div class="tray-error">โหลดข้อมูลไม่ได้: ${err.message}</div>`;
+      `<div class="tray-error">Failed to load data: ${err.message}</div>`;
   }
   rebuildPool();   // defaults + custom (จาก localStorage/snapshot)
   renderAll();

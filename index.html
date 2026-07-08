@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -32,16 +32,16 @@
     <input id="graph-title" class="graph-title" type="text" placeholder="Character's Flag" aria-label="ชื่อกราฟ">
 
     <div class="actions">
-      <select id="tpl-select" title="เลือก template">
-        <option value="flag">ธงตัวละคร</option>
+      <select id="tpl-select" title="Choose template">
+        <option value="flag">Character Flags</option>
         <option value="mbti">MBTI</option>
-        <option value="blank">Custom (ว่าง)</option>
+        <option value="blank">Custom (Blank)</option>
       </select>
-      <button id="btn-template" title="แก้ไข template">⚙️ แก้กราฟ</button>
-      <button id="btn-import-json" title="นำเข้า JSON">📥</button>
-      <button id="btn-export-json" title="บันทึก JSON">💾</button>
-      <button id="btn-export-png" class="primary" title="บันทึกเป็นรูป PNG">🖼️ PNG</button>
-      <button id="btn-reset" title="ล้างกระดาน">🧹</button>
+      <button id="btn-template" title="Edit template">⚙️ Edit Graph</button>
+      <button id="btn-import-json" title="Import JSON">📥</button>
+      <button id="btn-export-json" title="Save JSON">💾</button>
+      <button id="btn-export-png" class="primary" title="Save as PNG">🖼️ PNG</button>
+      <button id="btn-reset" title="Clear board">🧹</button>
     </div>
   </header>
 
@@ -51,16 +51,16 @@
   </section>
 
   <main id="stage">
-    <div id="board" aria-label="กระดานกราฟ"></div>
+    <div id="board" aria-label="Graph board"></div>
   </main>
 
   <section id="tray-wrap">
     <div class="tray-head">
-      <span class="tray-title">ตัวละครในถาด (<span id="tray-count">0</span>)</span>
-      <span class="tray-hint">ลากขึ้นกระดาน • ลากออกนอกกระดานเพื่อเก็บคืน</span>
+      <span class="tray-title">Characters (<span id="tray-count">0</span>)</span>
+      <span class="tray-hint">Drag onto the board • drag out to return</span>
       <span class="tray-tools">
-        <button id="btn-add-char" title="เพิ่มตัวละคร (อัปโหลดรูป หรือ วาง JSON)">➕ เพิ่มตัวละคร</button>
-        <button id="btn-clear-chars" title="ลบตัวละครทั้งหมดที่เพิ่มเอง">🗑️</button>
+        <button id="btn-add-char" title="Add character (upload image or paste JSON)">➕ Add Character</button>
+        <button id="btn-clear-chars" title="Remove all added characters">🗑️</button>
       </span>
     </div>
     <div id="tray"></div>
