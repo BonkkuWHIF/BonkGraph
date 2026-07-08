@@ -8,9 +8,17 @@ const state = {
   title: '',
   template: cloneTemplate('flag'),
   origin: { x: 0.5, y: 0.5 },      // จุด (0,0) ของกราฟ — ลากได้ (ข้อ 6)
-  characters: [],                   // ตัวละครทั้งหมด
+  characters: [],                   // pool ทั้งหมด = defaults + custom (ใช้ render)
+  customCharacters: [],             // ตัวที่ user เพิ่มเอง (อัปโหลด/วาง JSON) — persist ได้
   placements: {},                   // { charId: {x, y} } เฉพาะตัวที่วางบนกระดาน
 };
+
+let defaultCharacters = [];         // ตัวละคร default จาก characters.json
+
+// ประกอบ pool = defaults + custom
+function rebuildPool() {
+  state.characters = [...defaultCharacters, ...state.customCharacters];
+}
 
 // เผยแพร่ให้ export.js เข้าถึง
 export function getState() { return state; }
@@ -354,8 +362,11 @@ export function saveLocal() {
       template: state.template,
       origin: state.origin,
       placements: state.placements,
+      customCharacters: state.customCharacters,
     }));
-  } catch (_) {}
+  } catch (_) {
+    // localStorage เต็ม (รูป data URL ใหญ่) — ข้ามไป ยังใช้งานใน session ได้
+  }
 }
 function loadLocal() {
   try {
@@ -372,6 +383,168 @@ export function applySnapshot(s) {
   if (s.template) state.template = s.template;
   if (s.origin) state.origin = s.origin;
   if (s.placements) state.placements = s.placements;
+  if (Array.isArray(s.customCharacters)) {
+    state.customCharacters = s.customCharacters.map(normalizeCustom);
+  }
+  rebuildPool();
+}
+
+// ---------- custom characters (ข้อ: manual json + สร้างเอง) ----------
+const DEFAULT_FLAG = '#94a3b8';
+
+function genId() {
+  return 'custom-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+}
+
+// รับ object อิสระ -> character ที่ใช้ได้ (ต้องมีอย่างน้อย name หรือ avatarUrl)
+function normalizeCustom(o) {
+  return {
+    id: o.id || genId(),
+    name: (o.name || '').toString().trim() || 'ไม่มีชื่อ',
+    avatarUrl: (o.avatarUrl || o.avatar || o.image || o.imageUrl || '').toString().trim(),
+    color: o.color || DEFAULT_FLAG,
+    custom: true,
+  };
+}
+
+function addCustomCharacter(data) {
+  const c = normalizeCustom(data);
+  state.customCharacters.push(c);
+  rebuildPool();
+  renderBadges();
+  saveLocal();
+  return c;
+}
+
+// วาง JSON: รับ array [{name, avatarUrl}] หรือ {characters:[...]} — ใช้แค่ name/avatarUrl
+function addCharactersFromJsonText(text) {
+  let data = JSON.parse(text);
+  if (data && Array.isArray(data.characters)) data = data.characters;
+  if (!Array.isArray(data)) throw new Error('ต้องเป็น array ของ {name, avatarUrl}');
+  const valid = data.filter((o) => o && (o.name || o.avatarUrl || o.image || o.imageUrl || o.avatar));
+  if (!valid.length) throw new Error('ไม่พบตัวละครที่มี name/avatarUrl');
+  valid.forEach((o) => state.customCharacters.push(normalizeCustom(o)));
+  rebuildPool();
+  renderBadges();
+  saveLocal();
+  return valid.length;
+}
+
+function clearCustomCharacters() {
+  if (!state.customCharacters.length) {
+    alert('ยังไม่มีตัวละครที่เพิ่มเอง');
+    return;
+  }
+  if (!confirm(`ลบตัวละครที่เพิ่มเอง ${state.customCharacters.length} ตัว? (ตัวละคร default ไม่ถูกลบ)`)) return;
+  // เอา placement ของ custom ออกด้วย
+  for (const c of state.customCharacters) delete state.placements[c.id];
+  state.customCharacters = [];
+  rebuildPool();
+  renderBadges();
+  saveLocal();
+}
+
+// ย่อรูป + crop เป็นสี่เหลี่ยมจัตุรัส -> data URL (เล็กพอเก็บ localStorage + คมพอ export)
+function fileToSquareDataUrl(file, size = 256) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) return reject(new Error('ไฟล์ไม่ใช่รูปภาพ'));
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('อ่านไฟล์ไม่ได้'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('รูปเสีย'));
+      img.onload = () => {
+        const s = Math.min(img.width, img.height);
+        const sx = (img.width - s) / 2, sy = (img.height - s) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, s, s, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// modal เพิ่มตัวละคร (2 โหมด: อัปโหลดรูป / วาง JSON)
+function showAddCharModal() {
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  back.innerHTML = `
+    <div class="modal add-char-modal">
+      <div class="modal-title">เพิ่มตัวละคร</div>
+      <div class="tabs">
+        <button class="tab active" data-tab="upload">อัปโหลดรูป</button>
+        <button class="tab" data-tab="json">วาง JSON</button>
+      </div>
+
+      <div class="tab-body" data-body="upload">
+        <label class="drop">
+          <input type="file" id="ac-file" accept="image/*">
+          <span class="drop-text">เลือกรูป / ลากรูปมาวาง</span>
+          <img id="ac-preview" alt="">
+        </label>
+        <input id="ac-name" type="text" placeholder="ชื่อตัวละคร">
+        <button id="ac-add" class="btn-primary">เพิ่มลงถาด</button>
+      </div>
+
+      <div class="tab-body" data-body="json" hidden>
+        <textarea id="ac-json" placeholder='[{"name":"อาร์ค","avatarUrl":"https://..."}]'></textarea>
+        <div class="hint">ใช้แค่ <b>name</b> และ <b>avatarUrl</b> (avatarUrl เป็น URL รูป)</div>
+        <button id="ac-json-add" class="btn-primary">โหลดเข้าถาด</button>
+      </div>
+
+      <button class="modal-close" title="ปิด">✕</button>
+    </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.addEventListener('click', (e) => { if (e.target === back) close(); });
+  back.querySelector('.modal-close').addEventListener('click', close);
+
+  // สลับแท็บ
+  back.querySelectorAll('.tab').forEach((t) => {
+    t.addEventListener('click', () => {
+      back.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === t));
+      back.querySelectorAll('.tab-body').forEach((b) => {
+        b.hidden = b.dataset.body !== t.dataset.tab;
+      });
+    });
+  });
+
+  // โหมดอัปโหลด
+  let pendingDataUrl = '';
+  const fileInp = back.querySelector('#ac-file');
+  const preview = back.querySelector('#ac-preview');
+  const nameInp = back.querySelector('#ac-name');
+  fileInp.addEventListener('change', async () => {
+    const f = fileInp.files?.[0];
+    if (!f) return;
+    try {
+      pendingDataUrl = await fileToSquareDataUrl(f);
+      preview.src = pendingDataUrl;
+      preview.style.display = 'block';
+      if (!nameInp.value) nameInp.value = f.name.replace(/\.[^.]+$/, '');
+    } catch (err) { alert(err.message); }
+  });
+  back.querySelector('#ac-add').addEventListener('click', () => {
+    if (!pendingDataUrl) { alert('เลือกรูปก่อน'); return; }
+    if (!nameInp.value.trim()) { alert('ใส่ชื่อตัวละคร'); return; }
+    addCustomCharacter({ name: nameInp.value, avatarUrl: pendingDataUrl });
+    close();
+  });
+
+  // โหมด JSON
+  back.querySelector('#ac-json-add').addEventListener('click', () => {
+    const txt = back.querySelector('#ac-json').value.trim();
+    if (!txt) { alert('วาง JSON ก่อน'); return; }
+    try {
+      const n = addCharactersFromJsonText(txt);
+      close();
+      alert(`เพิ่ม ${n} ตัวละครแล้ว`);
+    } catch (err) { alert('JSON ไม่ถูกต้อง: ' + err.message); }
+  });
 }
 
 // ---------- template controls ----------
@@ -455,7 +628,7 @@ function wireUI() {
   document.getElementById('btn-export-json').addEventListener('click', () => exportJSON(state));
   document.getElementById('btn-import-json').addEventListener('click', () => {
     importJSON((snap) => {
-      applySnapshot(snap);
+      applySnapshot(snap);   // rebuild pool ภายในแล้ว
       buildTemplateEditor();
       renderAll();
       saveLocal();
@@ -473,6 +646,9 @@ function wireUI() {
     renderBadges();
     saveLocal();
   });
+
+  document.getElementById('btn-add-char').addEventListener('click', showAddCharModal);
+  document.getElementById('btn-clear-chars').addEventListener('click', clearCustomCharacters);
 }
 
 // ---------- init ----------
@@ -489,11 +665,13 @@ async function init() {
   buildTemplateEditor();
 
   try {
-    state.characters = await loadCharacters();
+    defaultCharacters = await loadCharacters();
   } catch (err) {
+    defaultCharacters = [];
     document.getElementById('tray').innerHTML =
       `<div class="tray-error">โหลดข้อมูลไม่ได้: ${err.message}</div>`;
   }
+  rebuildPool();   // defaults + custom (จาก localStorage/snapshot)
   renderAll();
 
   window.addEventListener('resize', () => renderGraph());

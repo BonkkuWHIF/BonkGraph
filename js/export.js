@@ -11,6 +11,7 @@ export function exportJSON(state) {
     template: state.template,
     origin: state.origin,
     placements: state.placements,
+    customCharacters: state.customCharacters || [],
   };
   const blob = new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' });
   download(blob, safeName(state.title || 'bonkgraph') + '.json');
@@ -46,6 +47,16 @@ export function exportPNG(state, board, { onClearBoard }) {
 }
 
 async function renderCanvasAndDownload(state, board) {
+  // รอให้ฟอนต์ไทย (Anuphan) โหลดเสร็จก่อน ไม่งั้น canvas จะ render ด้วยฟอนต์ระบบ
+  try {
+    await Promise.all([
+      document.fonts.load('700 36px "Anuphan"'),
+      document.fonts.load('600 26px "Anuphan"'),
+      document.fonts.load('500 22px "Anuphan"'),
+    ]);
+    await document.fonts.ready;
+  } catch (_) {}
+
   const br = board.getBoundingClientRect();
   const W = 1600;
   const H = Math.round(W * (br.height / br.width));
@@ -97,11 +108,11 @@ async function renderCanvasAndDownload(state, board) {
       roundImage(ctx, logo, headerPad, logoY, logoSize, logoSize, 10);
       const textX = headerPad + logoSize + brandGap;
       const textY = logoY + logoSize / 2;
-      ctx.font = '700 22px system-ui, "Noto Sans Thai", sans-serif';
+      ctx.font = '700 22px "Anuphan", system-ui, sans-serif';
       ctx.fillStyle = '#fff';
       ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6;
       textAt(ctx, 'BonkGraph', textX, textY - 10, 'left', 'middle');
-      ctx.font = '500 17px system-ui, "Noto Sans Thai", sans-serif';
+      ctx.font = '500 17px "Anuphan", system-ui, sans-serif';
       textAt(ctx, 'by Bonkku', textX, textY + 12, 'left', 'middle');
       ctx.shadowBlur = 0;
     }
@@ -112,10 +123,10 @@ async function renderCanvasAndDownload(state, board) {
   const titleSidePad = 32;
   const titleMaxW = W - titleSidePad * 2;
   let titleFont = 36;
-  ctx.font = `700 ${titleFont}px system-ui, "Noto Sans Thai", sans-serif`;
+  ctx.font = `700 ${titleFont}px "Anuphan", system-ui, sans-serif`;
   while (titleFont > 20 && ctx.measureText(title).width > titleMaxW) {
     titleFont -= 2;
-    ctx.font = `700 ${titleFont}px system-ui, "Noto Sans Thai", sans-serif`;
+    ctx.font = `700 ${titleFont}px "Anuphan", system-ui, sans-serif`;
   }
   ctx.fillStyle = '#fff';
   ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 8;
@@ -125,7 +136,7 @@ async function renderCanvasAndDownload(state, board) {
   const headerBottom = titleY + titleFont + 16;
 
   // ป้าย quadrant (ใต้ header)
-  ctx.font = '600 26px system-ui, sans-serif';
+  ctx.font = '600 26px "Anuphan", system-ui, sans-serif';
   drawCorner(ctx, q.topLeft.label, 20, headerBottom, 'left', 'top');
   drawCorner(ctx, q.topRight.label, W - 20, headerBottom, 'right', 'top');
   drawCorner(ctx, q.bottomLeft.label, 20, H - 20, 'left', 'bottom');
@@ -133,7 +144,7 @@ async function renderCanvasAndDownload(state, board) {
 
   // ป้ายปลายแกน
   const axisTopY = headerBottom + 4;
-  ctx.font = '500 22px system-ui, sans-serif';
+  ctx.font = '500 22px "Anuphan", system-ui, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,.85)';
   textAt(ctx, template.axis.x.right, W - 14, oy, 'right', 'middle');
   textAt(ctx, template.axis.x.left, 14, oy, 'left', 'middle');
@@ -162,7 +173,7 @@ function drawBadge(ctx, img, char, x, y, R) {
     ctx.fillStyle = char.color;
     ctx.fillRect(x - R, y - R, 2 * R, 2 * R);
     ctx.fillStyle = '#fff';
-    ctx.font = `700 ${R}px system-ui, sans-serif`;
+    ctx.font = `700 ${R}px "Anuphan", system-ui, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText((char.name || '?').slice(0, 1), x, y);
   }
@@ -176,7 +187,7 @@ function drawBadge(ctx, img, char, x, y, R) {
   ctx.stroke();
 
   // ชื่อใต้ badge
-  ctx.font = '600 18px system-ui, sans-serif';
+  ctx.font = '600 18px "Anuphan", system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   const name = char.name;
   const tw = ctx.measureText(name).width;
