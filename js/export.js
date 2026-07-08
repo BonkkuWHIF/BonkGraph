@@ -42,7 +42,7 @@ export function importJSON(onLoad) {
 export function exportPNG(state, board, { onClearBoard }) {
   showGimmick(
     () => renderCanvasAndDownload(state, board),   // ตอบ "ใช่" -> โหลดภาพ
-    () => onClearBoard?.()                          // ตอบ "ไม่" -> เคลียร์กระดาน
+    () => { onClearBoard?.(); showTantrum(); }      // ตอบ "ไม่" -> เคลียร์กระดาน + popup อาละวาด
   );
 }
 
@@ -205,6 +205,12 @@ function showGimmick(onYes, onNo) {
   back.innerHTML = `
     <div class="modal">
       <div class="modal-title">Is Ark-chan cute? 🥺</div>
+      <div class="modal-sub">
+        <div>น้องอาร์คน่ารักไหม?</div>
+        <div>アークちゃんは可愛い？</div>
+        <div>아크짱 귀엽지?</div>
+        <div>阿克醬可愛嗎？</div>
+      </div>
       <div class="modal-actions">
         <button class="btn-yes">Yes 💖</button>
         <button class="btn-no">No</button>
@@ -214,6 +220,30 @@ function showGimmick(onYes, onNo) {
   const close = () => back.remove();
   back.querySelector('.btn-yes').addEventListener('click', () => { close(); onYes(); });
   back.querySelector('.btn-no').addEventListener('click', () => { close(); onNo(); });
+  back.addEventListener('click', (e) => { if (e.target === back) close(); });
+}
+
+// popup ตอนตอบ No — น้องอาร์คอาละวาด (หลายภาษา)
+function showTantrum() {
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  back.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">😾 Ark-chan threw a tantrum!</div>
+      <div class="modal-sub">
+        <div>Your data bounced right back to where it was...</div>
+        <div>น้องอาร์คอาละวาด! ข้อมูลของคุณเด้งกลับไปอยู่ที่เดิม...</div>
+        <div>アークちゃんが大暴れ！データは元の場所に戻っちゃった…</div>
+        <div>아크짱이 난동을 부렸어요! 데이터가 원래 자리로 되돌아갔어요…</div>
+        <div>阿克醬大鬧脾氣！你的資料被彈回原本的位置了…</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-ok">OK</button>
+      </div>
+    </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.btn-ok').addEventListener('click', close);
   back.addEventListener('click', (e) => { if (e.target === back) close(); });
 }
 

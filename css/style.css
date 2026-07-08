@@ -288,6 +288,21 @@ body {
 }
 .btn-yes { background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #fff; }
 .btn-no { background: var(--panel-2); color: var(--muted); border: 1px solid var(--line) !important; }
+.btn-ok { background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #fff; }
+
+/* multi-language subtitle in popups */
+.modal-sub {
+  margin: -6px 0 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+  /* Anuphan ไม่มี glyph CJK -> ใส่ CJK families ก่อน generic sans-serif
+     (ถ้าวาง sans-serif ก่อน จะ short-circuit ไม่ถึง family หลัง) */
+  font-family: "Anuphan", "Hiragino Sans", "Yu Gothic", "Meiryo",
+    "Malgun Gothic", "Microsoft JhengHei", "PingFang TC", "Noto Sans CJK TC",
+    system-ui, sans-serif;
+}
+.modal-sub div { white-space: normal; }
 
 /* ---------- add-character modal ---------- */
 .add-char-modal {
