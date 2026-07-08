@@ -276,6 +276,7 @@ body {
   max-width: 104px;
   white-space: normal;
   word-break: break-word;
+  text-wrap: balance;   /* เกลี่ยความยาวแต่ละบรรทัดให้ใกล้เคียงกัน ตอนชื่อยาวขึ้นหลายบรรทัด */
   text-shadow: 0 1px 2px rgba(0,0,0,.8);
   pointer-events: none;
 }
@@ -286,13 +287,19 @@ body {
   width: auto;
 }
 .badge.placed img { width: calc(52px * var(--badge-scale, 1)); height: calc(52px * var(--badge-scale, 1)); }
-/* ชื่อบนกระดาน: ชิปพื้นเข้มให้อ่านออกแม้ทับกัน + wrap แคบ ลดบานด้านข้าง */
+/* ชื่อบนกระดาน: ชิปพื้นเข้มหุ้มพอดี "แต่ละบรรทัด" (box-decoration-break: clone)
+   คู่กับ text-wrap:balance -> หลายบรรทัดยาวใกล้เคียงกัน ดูเท่ากัน ไม่บานข้าง */
 .badge.placed .badge-name {
+  max-width: 92px;
+  margin-top: 1px;
+  line-height: 1.5;
+}
+.badge.placed .badge-name-txt {
   background: rgba(12, 10, 22, .8);
   padding: 2px 7px;
   border-radius: 7px;
-  max-width: 92px;
-  margin-top: 1px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 /* hover ตัวไหน เด้งตัวนั้น + ชื่อขึ้นมาอยู่หน้าสุด (อ่านตัวที่ทับกันได้) */
 .badge.placed:hover { z-index: 100; }

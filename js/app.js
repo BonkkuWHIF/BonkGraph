@@ -209,7 +209,10 @@ function badgeEl(char, placed) {
 
   const name = document.createElement('span');
   name.className = 'badge-name';
-  name.textContent = char.name;
+  const nameTxt = document.createElement('span');   // inner span รับ chip พื้นหลัง (หุ้มพอดีแต่ละบรรทัด)
+  nameTxt.className = 'badge-name-txt';
+  nameTxt.textContent = char.name;
+  name.appendChild(nameTxt);
   b.appendChild(name);
 
   b.addEventListener('pointerdown', (e) => startBadgeDrag(e, char));
@@ -260,7 +263,7 @@ function syncDisplayControls() {
 }
 
 // ---------- snap grid (วางบนกระดานแล้วเด้งเข้าแถว/คอลัมน์) ----------
-const SNAP_DIVISIONS = 10;
+const SNAP_DIVISIONS = 40;
 
 function snapCoord(v) {
   const step = 1 / SNAP_DIVISIONS;
