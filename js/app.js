@@ -297,22 +297,26 @@ function startBadgeDrag(e, char) {
   b.classList.add('dragging');
   b.style.position = 'fixed';
   b.style.zIndex = 9999;
-  moveDragTo(e.clientX, e.clientY);
+  moveDragTo(e.clientX - drag.dx, e.clientY - drag.dy);
   b.addEventListener('pointermove', onBadgeMove);
   b.addEventListener('pointerup', onBadgeUp);
   b.addEventListener('pointercancel', onBadgeUp);
 }
+// cx,cy = จุดกึ่งกลาง badge ที่ต้องการ (px, พิกัดหน้าจอ)
 function moveDragTo(cx, cy) {
-  drag.el.style.left = cx - drag.dx + 'px';
-  drag.el.style.top = cy - drag.dy + 'px';
+  drag.el.style.left = cx + 'px';
+  drag.el.style.top = cy + 'px';
   drag.el.style.transform = 'translate(-50%, -50%)';
 }
 function onBadgeMove(e) {
   if (!drag) return;
   drag.moved = true;
-  const pt = boardPointFromClient(e.clientX, e.clientY);
+  // ยึด "จุดที่จับ" ไว้ใต้เคอร์เซอร์ -> กึ่งกลาง = เคอร์เซอร์ลบ offset ที่จับ
+  const cx = e.clientX - drag.dx;
+  const cy = e.clientY - drag.dy;
+  const pt = boardPointFromClient(cx, cy);
   if (pt.inside) moveDragTo(pt.clientX, pt.clientY);
-  else moveDragTo(e.clientX, e.clientY);
+  else moveDragTo(cx, cy);
 }
 function onBadgeUp(e) {
   if (!drag) return;
@@ -322,7 +326,7 @@ function onBadgeUp(e) {
   b.removeEventListener('pointerup', onBadgeUp);
   b.removeEventListener('pointercancel', onBadgeUp);
 
-  const pt = boardPointFromClient(e.clientX, e.clientY);
+  const pt = boardPointFromClient(e.clientX - drag.dx, e.clientY - drag.dy);
 
   if (pt.inside) {
     state.placements[drag.char.id] = { x: pt.x, y: pt.y };
