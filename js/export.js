@@ -102,10 +102,23 @@ async function renderCanvasAndDownload(state, board) {
   // badges
   const placed = characters.filter((c) => placements[c.id]);
   const imgs = await Promise.all(placed.map((c) => loadImg(avatarBadgeUrl(c.avatarUrl, 104))));
+
+  // ลอกการแสดงผลจาก DOM ที่ user เห็นจริง แล้วสเกลขึ้น -> export = สิ่งที่ user จัด (ตรงทุกจอ/มือถือ)
+  const liveBoard = board ? board.getBoundingClientRect().width : 0;
+  const scale = liveBoard ? bs / liveBoard : bs / 900;   // fallback ถ้าอ่านกระดานไม่ได้
+  const nameEls = {};
+  if (board) board.querySelectorAll('.badge.placed').forEach((b) => {
+    nameEls[b.dataset.id] = b.querySelector('.badge-name-txt');
+  });
+
   const R = Math.round(bs * 0.033 * (state.badgeScale || 1));
   placed.forEach((c, i) => {
     const p = placements[c.id];
-    drawBadge(ctx, imgs[i], c, bx + p.x * bs, by + p.y * bs, R);
+    const txtEl = nameEls[c.id];
+    // อ่านฟอนต์ + การตัดบรรทัดจริงจากจอ (รองรับผล clamp บนมือถือ); ไม่มี DOM ก็ fallback แบบสัดส่วน
+    const fontPx = txtEl ? parseFloat(getComputedStyle(txtEl).fontSize) * scale : bs * 0.012;
+    const lines = txtEl ? readNameLines(txtEl) : greedyWrap(ctx, c.name || '', bs * 0.12, fontPx);
+    drawBadge(ctx, imgs[i], c, bx + p.x * bs, by + p.y * bs, R, lines, fontPx);
   });
 
   // ป้าย quadrant (มุมกราฟ)
@@ -156,7 +169,7 @@ async function renderCanvasAndDownload(state, board) {
   }, 'image/png');
 }
 
-function drawBadge(ctx, img, char, x, y, R) {
+function drawBadge(ctx, img, char, x, y, R, lines = [char.name || ''], nameFontPx = 18) {
   ctx.save();
   // วงกลม avatar
   ctx.beginPath();
@@ -185,16 +198,60 @@ function drawBadge(ctx, img, char, x, y, R) {
   ctx.strokeStyle = '#fff';
   ctx.stroke();
 
-  // ชื่อใต้ badge
-  ctx.font = `600 18px ${CFONT}`;
+  // ชื่อใต้ badge — วาดตามบรรทัดที่ตัดมาจากจอจริง + ชิปพื้นเข้มต่อบรรทัด (ตรงกับที่ user เห็น)
+  ctx.font = `600 ${nameFontPx}px ${CFONT}`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-  const name = char.name;
-  const tw = ctx.measureText(name).width;
-  ctx.fillStyle = 'rgba(0,0,0,.55)';
-  roundRect(ctx, x - tw / 2 - 6, y + R + 4, tw + 12, 24, 6);
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.fillText(name, x, y + R + 8);
+  const padX = Math.round(nameFontPx * 0.5);
+  const padY = Math.round(nameFontPx * 0.18);
+  const lineH = Math.round(nameFontPx * 1.5);
+  const rad = Math.round(nameFontPx * 0.4);
+  let ly = y + R + Math.round(nameFontPx * 0.4) + 2;
+  for (const ln of lines) {
+    if (!ln) { ly += lineH; continue; }
+    const tw = ctx.measureText(ln).width;
+    ctx.fillStyle = 'rgba(12, 10, 22, .8)';
+    roundRect(ctx, x - tw / 2 - padX, ly - padY, tw + padX * 2, nameFontPx + padY * 2, rad);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText(ln, x, ly);
+    ly += lineH;
+  }
+}
+
+// อ่านบรรทัดที่เบราว์เซอร์ตัดจริงจาก element ชื่อ (ตรวจการขึ้นบรรทัดจาก top ของแต่ละอักขระ)
+function readNameLines(txtEl) {
+  const node = txtEl && txtEl.firstChild;
+  const text = node ? node.textContent : (txtEl ? txtEl.textContent : '') || '';
+  if (!node || !text) return [text];
+  const range = document.createRange();
+  const lines = [];
+  let cur = '', prevTop = null;
+  for (let i = 0; i < text.length; i++) {
+    range.setStart(node, i);
+    range.setEnd(node, i + 1);
+    const r = range.getBoundingClientRect();
+    if (prevTop !== null && r.top - prevTop > 1 && cur) { lines.push(cur); cur = ''; }
+    cur += text[i];
+    prevTop = r.top;
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [text];
+}
+
+// fallback ตัดบรรทัดเอง (ใช้เมื่ออ่าน DOM ไม่ได้) — แบ่งทีละอักขระตามความกว้าง
+function greedyWrap(ctx, text, maxW, fontPx) {
+  ctx.save();
+  ctx.font = `600 ${fontPx}px ${CFONT}`;
+  const out = [];
+  let line = '';
+  for (const ch of Array.from(text)) {
+    const test = line + ch;
+    if (line && ctx.measureText(test).width > maxW) { out.push(line); line = ch; }
+    else line = test;
+  }
+  if (line) out.push(line);
+  ctx.restore();
+  return out.length ? out : [''];
 }
 
 // ---------- gimmick popup ----------

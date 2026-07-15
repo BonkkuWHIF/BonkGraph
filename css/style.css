@@ -193,6 +193,8 @@ body {
   border-radius: 12px;
   overflow: hidden;
   touch-action: none;   /* กัน browser scroll ตอนลากบนมือถือ */
+  container-type: size; /* ให้ badge/ชื่อบนกระดานอิงขนาดกระดาน (cqw) -> ตรงกับ PNG ทุกจอ */
+  container-name: board;
 }
 @supports not (container-type: size) {
   #board { width: min(88vw, calc(100vh - 300px), 820px); }
@@ -267,7 +269,7 @@ body {
   background: var(--flag, #2a2540);
   color: #fff; font-weight: 700; font-size: 20px;
 }
-.badge.placed.noimg::before { width: calc(52px * var(--badge-scale, 1)); height: calc(52px * var(--badge-scale, 1)); }
+.badge.placed.noimg::before { width: calc(6.6cqw * var(--badge-scale, 1)); height: calc(6.6cqw * var(--badge-scale, 1)); }
 .badge-name {
   font-size: 10px;
   line-height: 1.25;
@@ -280,24 +282,38 @@ body {
   text-shadow: 0 1px 2px rgba(0,0,0,.8);
   pointer-events: none;
 }
+/* กล่อง badge = ขนาด avatar พอดี, anchor กึ่งกลาง avatar ที่จุด p (ตรงกับ PNG)
+   ชื่อลอยใต้ avatar แบบ absolute -> ชื่อยาวหลายบรรทัดไม่ดันตำแหน่ง avatar
+   => avatar ทุกตัวอยู่ระดับเดียวกันทั้งบนจอและใน PNG */
 .badge.placed {
   position: absolute;
   transform: translate(-50%, -50%);
   z-index: 3;
-  width: auto;
+  display: block;
+  min-width: 0;   /* ยกเลิก min-width ของถาด ไม่งั้นบังคับกว้าง 54px -> avatar เป็นวงรี */
+  width: calc(6.6cqw * var(--badge-scale, 1));
+  height: calc(6.6cqw * var(--badge-scale, 1));
 }
-.badge.placed img { width: calc(52px * var(--badge-scale, 1)); height: calc(52px * var(--badge-scale, 1)); }
-/* ชื่อบนกระดาน: ชิปพื้นเข้มหุ้มพอดี "แต่ละบรรทัด" (box-decoration-break: clone)
-   คู่กับ text-wrap:balance -> หลายบรรทัดยาวใกล้เคียงกัน ดูเท่ากัน ไม่บานข้าง */
+.badge.placed img { width: 100%; height: 100%; }
+.badge.placed.noimg::before { width: 100%; height: 100%; font-size: 3cqw; }
 .badge.placed .badge-name {
-  max-width: 92px;
-  margin-top: 1px;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  /* กว้างเท่าเนื้อหา แต่ไม่เกิน 12% ของกระดาน (ไม่ถูกบีบด้วยความกว้าง avatar) */
+  width: max-content;
+  max-width: 12cqw;
+  text-align: center;
+  /* อิงกระดาน (cqw) ให้เท่ากับ PNG: ฟอนต์ ~1.2% ของกระดาน */
+  font-size: clamp(7px, 1.2cqw, 22px);
+  margin-top: 0.3cqw;
   line-height: 1.5;
 }
 .badge.placed .badge-name-txt {
   background: rgba(12, 10, 22, .8);
-  padding: 2px 7px;
-  border-radius: 7px;
+  padding: 0.15em 0.5em;
+  border-radius: 0.4em;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
