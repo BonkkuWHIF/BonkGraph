@@ -10,7 +10,7 @@ export const FLAG_COLORS = {
   'ธงดำ': '#4b5563',
 };
 
-const BADGE_TRANSFORM = 'fit=scale-down,quality=85,format=auto';
+const BADGE_TRANSFORM = 'fit=scale-down,quality=85,format=auto,anim=false';
 
 // whif CDN — ย่อรูปจาก /public เป็น transform URL (เช่น width=88,fit=scale-down,...)
 export function avatarBadgeUrl(url, width = 88) {
