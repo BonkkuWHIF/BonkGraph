@@ -262,22 +262,15 @@ function syncDisplayControls() {
   if (b) b.value = state.badgeScale;
 }
 
-// ---------- snap grid (วางบนกระดานแล้วเด้งเข้าแถว/คอลัมน์) ----------
-const SNAP_DIVISIONS = 40;
-
-function snapCoord(v) {
-  const step = 1 / SNAP_DIVISIONS;
-  return clamp(Math.round(v / step) * step, 0, 1);
-}
-
+// ---------- board point (วางตรงจุดที่ปล่อย ไม่มี snap) ----------
 function boardPointFromClient(cx, cy) {
   const br = el.board.getBoundingClientRect();
   const inside =
     cx >= br.left && cx <= br.right &&
     cy >= br.top && cy <= br.bottom;
   if (!inside) return { inside: false };
-  const x = snapCoord((cx - br.left) / br.width);
-  const y = snapCoord((cy - br.top) / br.height);
+  const x = clamp((cx - br.left) / br.width, 0, 1);
+  const y = clamp((cy - br.top) / br.height, 0, 1);
   return {
     inside: true,
     x,
