@@ -14,6 +14,12 @@ export function exportJSON(state) {
     origin: state.origin,
     placements: state.placements,
     customCharacters: state.customCharacters || [],
+    charEdits: state.charEdits || {},
+    hiddenIds: state.hiddenIds || [],
+    titleColor: state.titleColor,
+    titleScale: state.titleScale,
+    badgeScale: state.badgeScale,
+    url: state.url,
   };
   const blob = new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' });
   download(blob, safeName(state.title || 'bonkgraph') + '.json');

@@ -11,6 +11,8 @@ const state = {
   origin: { x: 0.5, y: 0.5 },      // จุด (0,0) ของกราฟ — ลากได้
   characters: [],                   // pool ทั้งหมด = defaults + custom (ใช้ render)
   customCharacters: [],             // ตัวที่ user เพิ่มเอง (อัปโหลด/วาง JSON) — persist ได้
+  charEdits: {},                    // { charId: {name?, avatarUrl?, color?} } แก้ไขทับ (ทั้ง default/custom)
+  hiddenIds: [],                    // id ที่ถูกลบ (สำหรับตัว default — custom ลบออกจาก array ตรง ๆ)
   placements: {},                   // { charId: {x, y} } เฉพาะตัวที่วางบนกระดาน
   // การแสดงผล
   titleColor: '#ffffff',
@@ -21,9 +23,15 @@ const state = {
 
 let defaultCharacters = [];         // ตัวละคร default จาก characters.json
 
-// ประกอบ pool = defaults + custom
+// ประกอบ pool = defaults + custom แล้วใส่ค่าที่แก้ไข (charEdits) ทับ + ซ่อนตัวที่ลบ (hiddenIds)
 function rebuildPool() {
-  state.characters = [...defaultCharacters, ...state.customCharacters];
+  const all = [...defaultCharacters, ...state.customCharacters];
+  state.characters = all
+    .filter((c) => !state.hiddenIds.includes(c.id))
+    .map((c) => {
+      const e = state.charEdits[c.id];
+      return e ? { ...c, ...e } : c;
+    });
 }
 
 // เผยแพร่ให้ export.js เข้าถึง
@@ -277,7 +285,21 @@ function badgeEl(char, mode = 'tray') {
   name.appendChild(nameTxt);
   b.appendChild(name);
 
-  b.addEventListener('pointerdown', (e) => startBadgeDrag(e, char));
+  // ปุ่มแก้ไข (✎) — โผล่ตอน hover (desktop) / แสดงจาง ๆ บนจอสัมผัส; ไม่เข้า PNG (export วาดใหม่จาก state)
+  const edit = document.createElement('button');
+  edit.className = 'badge-edit';
+  edit.type = 'button';
+  edit.title = t('tipEditBadge');
+  edit.setAttribute('aria-label', t('tipEditBadge'));
+  edit.textContent = '✎';
+  edit.addEventListener('pointerdown', (e) => e.stopPropagation());  // กันไม่ให้เริ่มลาก badge
+  edit.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); openEditCharModal(char); });
+  b.appendChild(edit);
+
+  b.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.badge-edit')) return;  // ปุ่มแก้ — ไม่เริ่มลาก
+    startBadgeDrag(e, char);
+  });
   return b;
 }
 
@@ -488,6 +510,8 @@ export function saveLocal() {
       origin: state.origin,
       placements: state.placements,
       customCharacters: state.customCharacters,
+      charEdits: state.charEdits,
+      hiddenIds: state.hiddenIds,
       titleColor: state.titleColor,
       titleScale: state.titleScale,
       badgeScale: state.badgeScale,
@@ -515,6 +539,8 @@ export function applySnapshot(s) {
   if (Array.isArray(s.customCharacters)) {
     state.customCharacters = s.customCharacters.map(normalizeCustom);
   }
+  if (s.charEdits && typeof s.charEdits === 'object') state.charEdits = s.charEdits;
+  if (Array.isArray(s.hiddenIds)) state.hiddenIds = s.hiddenIds;
   if (s.titleColor) state.titleColor = s.titleColor;
   if (s.titleScale != null) state.titleScale = s.titleScale;
   if (s.badgeScale != null) state.badgeScale = s.badgeScale;
@@ -569,8 +595,8 @@ function clearCustomCharacters() {
     return;
   }
   if (!confirm(t('confirmRemoveCustom', { n: state.customCharacters.length }))) return;
-  // เอา placement ของ custom ออกด้วย
-  for (const c of state.customCharacters) delete state.placements[c.id];
+  // เอา placement + charEdits ของ custom ออกด้วย
+  for (const c of state.customCharacters) { delete state.placements[c.id]; delete state.charEdits[c.id]; }
   state.customCharacters = [];
   rebuildPool();
   renderBadges();
@@ -677,6 +703,201 @@ function showAddCharModal() {
       close();
       alert(t('added', { n }));
     } catch (err) { alert(t('invalidJson') + err.message); }
+  });
+}
+
+// ---------- edit / delete character ----------
+// color input ต้องเป็น #rrggbb — ถ้าไม่ใช่ ใช้สี default
+function toHexColor(c) {
+  return /^#[0-9a-fA-F]{6}$/.test(c || '') ? c : DEFAULT_FLAG;
+}
+
+// เขียนค่าที่แก้ลง charEdits (ทับทั้ง default/custom) แล้ว re-render
+function applyCharEdit(id, patch) {
+  state.charEdits[id] = { ...(state.charEdits[id] || {}), ...patch };
+  rebuildPool();
+  renderBadges();
+  saveLocal();
+}
+
+// ลบตัวละคร: custom -> เอาออกจาก array, default -> ซ่อนด้วย hiddenIds
+function deleteCharacter(id) {
+  const isCustom = state.customCharacters.some((c) => c.id === id);
+  if (isCustom) state.customCharacters = state.customCharacters.filter((c) => c.id !== id);
+  else if (!state.hiddenIds.includes(id)) state.hiddenIds.push(id);
+  delete state.charEdits[id];
+  delete state.placements[id];
+  rebuildPool();
+  renderBadges();
+  saveLocal();
+}
+
+// เครื่องมือ crop รูปเป็นวงกลม/จัตุรัส: ลากเลื่อน + สไลเดอร์ซูม อ่านผลจากเรขาคณิตที่แสดงจริง
+function makeCropper(viewport, zoomInput) {
+  let img = null, cover = 1, zoom = 1, tx = 0, ty = 0, dirty = false;
+  let drag = null;
+  const imgEl = document.createElement('img');
+  imgEl.className = 'crop-img';
+  imgEl.draggable = false;
+  viewport.appendChild(imgEl);
+
+  const VW = () => viewport.clientWidth || 1;   // viewport เป็นสี่เหลี่ยมจัตุรัส
+
+  function clampAndLayout() {
+    if (!img) return;
+    const v = VW();
+    const scale = cover * zoom;
+    const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+    // ยึดให้รูปคลุมเต็ม viewport เสมอ (ไม่โผล่ขอบว่าง)
+    tx = Math.min(0, Math.max(v - w, tx));
+    ty = Math.min(0, Math.max(v - h, ty));
+    imgEl.style.width = w + 'px';
+    imgEl.style.height = h + 'px';
+    imgEl.style.transform = `translate(${tx}px, ${ty}px)`;
+  }
+
+  function setImage(newImg) {
+    img = newImg;
+    zoom = 1;
+    const v = VW();
+    cover = Math.max(v / img.naturalWidth, v / img.naturalHeight);
+    const w = img.naturalWidth * cover, h = img.naturalHeight * cover;
+    tx = (v - w) / 2; ty = (v - h) / 2;          // จัดกึ่งกลาง
+    if (zoomInput) zoomInput.value = '1';
+    imgEl.src = img.src;
+    clampAndLayout();
+  }
+
+  imgEl.addEventListener('pointerdown', (e) => {
+    if (!img) return;
+    e.preventDefault();
+    drag = { x: e.clientX, y: e.clientY, tx, ty };
+    try { imgEl.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  imgEl.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    tx = drag.tx + (e.clientX - drag.x);
+    ty = drag.ty + (e.clientY - drag.y);
+    dirty = true;
+    clampAndLayout();
+  });
+  const end = () => { drag = null; };
+  imgEl.addEventListener('pointerup', end);
+  imgEl.addEventListener('pointercancel', end);
+
+  if (zoomInput) zoomInput.addEventListener('input', () => {
+    if (!img) return;
+    const v = VW();
+    const oldScale = cover * zoom;
+    zoom = parseFloat(zoomInput.value) || 1;
+    const newScale = cover * zoom;
+    // ซูมโดยยึดจุดกึ่งกลาง viewport ไว้กับที่
+    const c = v / 2;
+    tx = c - (c - tx) * (newScale / oldScale);
+    ty = c - (c - ty) * (newScale / oldScale);
+    dirty = true;
+    clampAndLayout();
+  });
+
+  function toDataURL(size = 256) {
+    if (!img) return '';
+    const v = VW();
+    const natPerDisp = 1 / (cover * zoom);       // natural px ต่อ display px
+    const sx = (-tx) * natPerDisp;
+    const sy = (-ty) * natPerDisp;
+    const sSize = v * natPerDisp;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, size, size);
+    return canvas.toDataURL('image/jpeg', 0.85);
+  }
+
+  return {
+    setImage,
+    toDataURL,
+    hasImage: () => !!img,
+    isDirty: () => dirty,
+    markDirty: () => { dirty = true; },
+  };
+}
+
+// modal แก้ไขตัวละคร: crop รูป / เปลี่ยนรูป / ชื่อ / สีธง / ลบ
+function openEditCharModal(char) {
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  back.innerHTML = `
+    <div class="modal add-char-modal edit-char-modal">
+      <div class="modal-title">${t('editCharTitle')}</div>
+      <div id="ec-vp" class="crop-viewport noimg" data-initial="${escapeAttr((char.name || '?').slice(0, 1))}"></div>
+      <input id="ec-zoom" class="crop-zoom" type="range" min="1" max="3" step="0.01" value="1">
+      <div class="crop-hint">${t('cropHint')}</div>
+      <label class="crop-file-btn">${t('changeImage')}
+        <input id="ec-file" type="file" accept="image/*" hidden>
+      </label>
+      <input id="ec-name" type="text" value="${escapeAttr(char.name)}" placeholder="${escapeAttr(t('charNamePh'))}">
+      <label class="ec-color-row"><span>${t('flagColor')}</span>
+        <input id="ec-color" type="color" value="${toHexColor(char.color)}"></label>
+      <div class="ec-buttons">
+        <button id="ec-delete" class="btn-danger">🗑️ ${t('deleteChar')}</button>
+        <button id="ec-save" class="btn-primary">${t('save')}</button>
+      </div>
+      <button class="modal-close" title="${escapeAttr(t('close'))}">✕</button>
+    </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.addEventListener('click', (e) => { if (e.target === back) close(); });
+  back.querySelector('.modal-close').addEventListener('click', close);
+
+  const vp = back.querySelector('#ec-vp');
+  const zoomInp = back.querySelector('#ec-zoom');
+  const fileInp = back.querySelector('#ec-file');
+  const nameInp = back.querySelector('#ec-name');
+  const colorInp = back.querySelector('#ec-color');
+  vp.style.setProperty('--flag', char.color || DEFAULT_FLAG);
+  colorInp.addEventListener('input', () => vp.style.setProperty('--flag', colorInp.value));
+  const cropper = makeCropper(vp, zoomInp);
+  let imageChanged = false;
+
+  const loadInto = (src) => {
+    const im = new Image();
+    im.crossOrigin = 'anonymous';
+    im.onload = () => { vp.classList.remove('noimg'); cropper.setImage(im); };
+    im.onerror = () => { vp.classList.add('noimg'); };
+    im.src = src;
+  };
+  // โหลดรูปปัจจุบัน (ขอความละเอียดสูงหน่อยเพื่อ crop คมขึ้น)
+  if (char.avatarUrl) loadInto(avatarBadgeUrl(char.avatarUrl, 512));
+
+  fileInp.addEventListener('change', () => {
+    const f = fileInp.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith('image/')) { alert(t('invalidFile')); return; }
+    const reader = new FileReader();
+    reader.onload = () => { imageChanged = true; cropper.markDirty(); loadInto(reader.result); };
+    reader.readAsDataURL(f);
+  });
+
+  back.querySelector('#ec-save').addEventListener('click', () => {
+    const patch = { name: nameInp.value.trim() || 'Unnamed', color: colorInp.value };
+    // สร้างรูปใหม่เฉพาะเมื่อเปลี่ยนรูปหรือขยับ crop — เลี่ยงแปลง URL เดิมเป็น dataURL โดยไม่จำเป็น
+    if (cropper.hasImage() && (imageChanged || cropper.isDirty())) {
+      try {
+        patch.avatarUrl = cropper.toDataURL(256);
+      } catch (err) {
+        // canvas ถูก taint (CORS) — ถ้าเป็นรูปที่เพิ่งอัปโหลด (dataURL) จะไม่เกิด; รูปเดิมโหลดข้ามโดเมนอาจเกิด
+        alert(t('cropFailCors'));
+        if (imageChanged) return;   // ผู้ใช้ตั้งใจเปลี่ยนรูปแต่ทำไม่ได้ — อย่าบันทึกทับ
+      }
+    }
+    applyCharEdit(char.id, patch);
+    close();
+  });
+
+  back.querySelector('#ec-delete').addEventListener('click', () => {
+    if (!confirm(t('confirmDeleteChar', { name: char.name }))) return;
+    deleteCharacter(char.id);
+    close();
   });
 }
 
