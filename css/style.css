@@ -268,63 +268,55 @@ body {
   background: #2a2540;
   pointer-events: none;
 }
-/* ปุ่มแก้ไข badge — desktop: โผล่ตอน hover / touch: แสดงจาง ๆ เสมอ */
+/* ปุ่มแก้ไข badge — แสดงเสมอที่มุมล่างขวาของรูป (หาเจอง่าย) */
 .badge-edit {
   position: absolute;
-  top: -2px;
-  right: calc(50% - 27px);
-  width: 22px;
-  height: 22px;
+  /* จัดทับมุมล่างขวาของ avatar 46px ที่อยู่กึ่งกลาง badge */
+  top: 28px;
+  left: calc(50% + 8px);
+  width: 20px;
+  height: 20px;
   padding: 0;
-  border: 1px solid var(--line);
+  border: 1.5px solid #fff;
   border-radius: 50%;
-  background: var(--panel);
-  color: var(--text);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
   font-size: 11px;
   line-height: 1;
   cursor: pointer;
-  z-index: 4;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .12s ease, background .12s ease, border-color .12s ease;
-  box-shadow: 0 2px 6px rgba(0,0,0,.35);
-}
-.badge:hover .badge-edit,
-.badge:focus-within .badge-edit {
-  opacity: 1;
   pointer-events: auto;
+  box-shadow: 0 2px 6px rgba(0,0,0,.45);
+  transition: transform .12s ease, filter .12s ease;
 }
-.badge-edit:hover {
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
-  border-color: transparent;
-  color: #fff;
+.badge-edit:hover,
+.badge-edit:focus-visible {
+  transform: scale(1.12);
+  filter: brightness(1.1);
+  outline: none;
 }
-/* บนกระดาน — วางมุมบนขวาของวงกลม avatar */
+/* บนกระดาน — มุมล่างขวาของวงกลม (อยู่ในกล่อง badge ไม่โดน board ตัด) */
 .badge.placed .badge-edit {
-  top: -4px;
-  right: -4px;
-  width: clamp(16px, 2.2cqw, 22px);
-  height: clamp(16px, 2.2cqw, 22px);
-  font-size: clamp(9px, 1.2cqw, 12px);
+  top: auto;
+  bottom: 0;
+  left: auto;
+  right: 0;
+  width: clamp(16px, 2.4cqw, 22px);
+  height: clamp(16px, 2.4cqw, 22px);
+  font-size: clamp(9px, 1.3cqw, 12px);
 }
 /* ในการ์ด MBTI */
 .badge.in-cell .badge-edit {
-  top: -3px;
-  right: calc(50% - 2.6cqw);
-  width: clamp(14px, 1.9cqw, 20px);
-  height: clamp(14px, 1.9cqw, 20px);
-  font-size: clamp(8px, 1.1cqw, 11px);
-}
-@media (hover: none) {
-  .badge-edit {
-    opacity: .55;
-    pointer-events: auto;
-  }
-  .badge:hover .badge-edit,
-  .badge:focus-within .badge-edit { opacity: 1; }
+  top: calc(4.4cqw * var(--badge-scale, 1) - 1.6cqw);
+  left: calc(50% + 0.6cqw);
+  right: auto;
+  bottom: auto;
+  width: clamp(14px, 2cqw, 20px);
+  height: clamp(14px, 2cqw, 20px);
+  font-size: clamp(8px, 1.2cqw, 11px);
 }
 .badge.noimg img { display: none; }
 .badge.noimg::before {

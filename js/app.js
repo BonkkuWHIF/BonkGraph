@@ -285,16 +285,23 @@ function badgeEl(char, mode = 'tray') {
   name.appendChild(nameTxt);
   b.appendChild(name);
 
-  // ปุ่มแก้ไข (✎) — โผล่ตอน hover (desktop) / แสดงจาง ๆ บนจอสัมผัส; ไม่เข้า PNG (export วาดใหม่จาก state)
+  // ปุ่มแก้ไข (✎) มุมล่างขวา — แสดงเสมอ; ไม่เข้า PNG (export วาดใหม่จาก state)
   const edit = document.createElement('button');
   edit.className = 'badge-edit';
   edit.type = 'button';
   edit.title = t('tipEditBadge');
   edit.setAttribute('aria-label', t('tipEditBadge'));
   edit.textContent = '✎';
-  edit.addEventListener('pointerdown', (e) => e.stopPropagation());  // กันไม่ให้เริ่มลาก badge
+  edit.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); });
   edit.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); openEditCharModal(char); });
   b.appendChild(edit);
+
+  // ดับเบิลคลิก / ดับเบิลแตะ ที่ badge = เปิดแก้ (ทางเลือกถ้าหาปุ่มไม่เจอ)
+  b.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    openEditCharModal(char);
+  });
 
   b.addEventListener('pointerdown', (e) => {
     if (e.target.closest('.badge-edit')) return;  // ปุ่มแก้ — ไม่เริ่มลาก
