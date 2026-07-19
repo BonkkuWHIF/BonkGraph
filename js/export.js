@@ -1,6 +1,7 @@
 // export/import JSON (ข้อ 9), export PNG (ข้อ 10) + gimmick popup
 
 import { avatarBadgeUrl } from './data.js';
+import { isGridTemplate } from './templates.js';
 import { t } from './i18n.js';
 
 // ---------- JSON ----------
@@ -60,20 +61,20 @@ async function renderCanvasAndDownload(state, board) {
     await document.fonts.ready;
   } catch (_) {}
 
+  if (isGridTemplate(state.template)) return renderGridCanvasAndDownload(state, board);
+
   const { origin, template, placements, characters } = state;
   const q = template.quadrants;
 
-  // ---- เลย์เอาต์: กราฟอยู่กลาง มีพื้นดำรอบ (title บน, brand ซ้ายบน, url ขวาล่าง) ----
+  // ---- เลย์เอาต์: กราฟอยู่กลาง มีพื้นดำรอบ (title บน, เครดิต+url แถบล่าง) ----
   const W = 1600;
   const sidePad = 48;
   const bs = W - sidePad * 2;                 // ขนาดกราฟ (สี่เหลี่ยมจัตุรัส)
   const titlePx = Math.round((state.titleScale || 3.2) / 100 * W);
-  const brandTop = 34, logoSize = 56;
-  const titleY = brandTop + logoSize + 26;
-  const topPad = titleY + titlePx + 28;
-  const bottomPad = 70;
+  const logoSize = 48, titleTop = 40, footerH = 84;
+  const topPad = titleTop + titlePx + 26;
   const bx = sidePad, by = topPad;            // มุมบนซ้ายของกราฟ
-  const H = topPad + bs + bottomPad;
+  const H = topPad + bs + footerH;
 
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
@@ -136,16 +137,112 @@ async function renderCanvasAndDownload(state, board) {
   textAt(ctx, template.axis.y.top, ox, by + 14, 'center', 'top');
   textAt(ctx, template.axis.y.bottom, ox, by + bs - 14, 'center', 'bottom');
 
-  // ---- brand ซ้ายบน (ark_logo วงกลม + ข้อความ) ----
-  try {
-    const logo = await loadImg('assets/ark_logo.png');
-    if (logo) circleImage(ctx, logo, sidePad + logoSize / 2, brandTop + logoSize / 2, logoSize / 2);
-  } catch (_) {}
-  ctx.font = `600 26px ${CFONT}`;
-  ctx.fillStyle = '#fff';
-  textAt(ctx, 'BonkGraph by Bonkku for WHIF', sidePad + logoSize + 16, brandTop + logoSize / 2, 'left', 'middle');
+  // ---- title (กลางบน) + เครดิตซ้ายล่าง + url ขวาล่าง ----
+  await drawFrameChrome(ctx, state, { W, H, sidePad, logoSize, titleTop, titlePx, footerH });
 
-  // ---- title (กลางบน, สี/ขนาดปรับได้) ----
+  canvas.toBlob((blob) => {
+    if (!blob) { alert(t('failPng')); return; }
+    download(blob, safeName(state.title || 'bonkgraph') + '.png');
+  }, 'image/png');
+}
+
+// ---------- PNG: เลย์เอาต์ตาราง 16 type ----------
+// ลอกตำแหน่ง/สีจาก DOM ที่ user เห็นจริงแล้วสเกลขึ้น -> PNG = สิ่งที่จัดบนจอ
+async function renderGridCanvasAndDownload(state, board) {
+  if (!board) { alert(t('failPng')); return; }
+  const bRect = board.getBoundingClientRect();
+  if (!bRect.width) { alert(t('failPng')); return; }
+
+  const { placements, characters } = state;
+
+  const W = 1600, sidePad = 48;
+  const boardW = W - sidePad * 2;
+  const s = boardW / bRect.width;                 // สัดส่วนสเกลจากจอ -> canvas
+  const boardH = Math.round(bRect.height * s);
+  const titlePx = Math.round((state.titleScale || 3.2) / 100 * W);
+  const logoSize = 48, titleTop = 40, footerH = 84;
+  const topPad = titleTop + titlePx + 26;
+  const bx = sidePad, by = topPad;
+  const H = topPad + boardH + footerH;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#0f0d1a';
+  roundRect(ctx, bx, by, boardW, boardH, 16); ctx.fill();
+
+  // แปลง rect บนจอ -> พิกัด canvas ในกรอบกระดาน
+  const map = (r) => ({
+    x: bx + (r.left - bRect.left) * s,
+    y: by + (r.top - bRect.top) * s,
+    w: r.width * s,
+    h: r.height * s,
+  });
+
+  // การ์ด 16 ใบ (พื้น + ขอบ + โค้ด type) — อ่านสีจริงจาก CSS
+  for (const card of board.querySelectorAll('.mbti-card')) {
+    const m = map(card.getBoundingClientRect());
+    const cs = getComputedStyle(card);
+    const rad = (parseFloat(cs.borderTopLeftRadius) || 10) * s;
+    ctx.fillStyle = cs.backgroundColor;
+    roundRect(ctx, m.x, m.y, m.w, m.h, rad); ctx.fill();
+    ctx.lineWidth = Math.max(1, (parseFloat(cs.borderTopWidth) || 1) * s);
+    ctx.strokeStyle = cs.borderTopColor;
+    roundRect(ctx, m.x, m.y, m.w, m.h, rad); ctx.stroke();
+
+    const tl = card.querySelector('.mbti-card-type');
+    if (tl) {
+      const tr = map(tl.getBoundingClientRect());
+      const ts = getComputedStyle(tl);
+      ctx.font = `${ts.fontWeight || 700} ${parseFloat(ts.fontSize) * s}px ${CFONT}`;
+      ctx.fillStyle = ts.color;
+      textAt(ctx, tl.textContent, tr.x, tr.y + tr.h / 2, 'left', 'middle');
+    }
+  }
+
+  // หัวคอลัมน์ (temperament)
+  for (const head of board.querySelectorAll('.grid-col-head')) {
+    const hr = map(head.getBoundingClientRect());
+    const hs = getComputedStyle(head);
+    ctx.font = `${hs.fontWeight || 700} ${parseFloat(hs.fontSize) * s}px ${CFONT}`;
+    ctx.fillStyle = hs.color;
+    textAt(ctx, head.textContent, hr.x, hr.y + hr.h / 2, 'left', 'middle');
+  }
+
+  // badge ในการ์ด
+  const placed = characters.filter((c) => {
+    const b = board.querySelector(`.badge.in-cell[data-id="${cssEsc(c.id)}"]`);
+    return !!b;
+  });
+  const imgs = await Promise.all(placed.map((c) => loadImg(avatarBadgeUrl(c.avatarUrl, 104))));
+  placed.forEach((c, i) => {
+    const badge = board.querySelector(`.badge.in-cell[data-id="${cssEsc(c.id)}"]`);
+    const imgEl = badge.querySelector('img');
+    const avaRect = imgEl && imgEl.getBoundingClientRect().width
+      ? imgEl.getBoundingClientRect()
+      : badge.getBoundingClientRect();       // noimg -> ใช้กรอบ badge เป็นวงกลม fallback
+    const cx = bx + (avaRect.left + avaRect.width / 2 - bRect.left) * s;
+    const cy = by + (avaRect.top + avaRect.width / 2 - bRect.top) * s;
+    const R = (avaRect.width / 2) * s;
+    const txtEl = badge.querySelector('.badge-name-txt');
+    const fontPx = txtEl ? parseFloat(getComputedStyle(txtEl).fontSize) * s : R * 0.5;
+    const lines = txtEl ? readNameLines(txtEl) : [c.name || ''];
+    drawBadge(ctx, imgs[i], c, cx, cy, R, lines, fontPx, false);
+  });
+
+  await drawFrameChrome(ctx, state, { W, H, sidePad, logoSize, titleTop, titlePx, footerH });
+
+  canvas.toBlob((blob) => {
+    if (!blob) { alert(t('failPng')); return; }
+    download(blob, safeName(state.title || 'bonkgraph') + '.png');
+  }, 'image/png');
+}
+
+// title กลางบน + เครดิตซ้ายล่าง (logo + ข้อความ) + url ขวาล่าง — ใช้ร่วมทุกเลย์เอาต์
+async function drawFrameChrome(ctx, state, { W, H, sidePad, logoSize, titleTop, titlePx, footerH }) {
+  // title (กลางบน, สี/ขนาดปรับได้)
   let title = state.title || "Character's Flag";
   let tp = titlePx;
   ctx.font = `700 ${tp}px ${CFONT}`;
@@ -154,22 +251,31 @@ async function renderCanvasAndDownload(state, board) {
     tp -= 2; ctx.font = `700 ${tp}px ${CFONT}`;
   }
   ctx.fillStyle = state.titleColor || '#ffffff';
-  textAt(ctx, title, W / 2, titleY + (titlePx - tp) / 2, 'center', 'top');
+  textAt(ctx, title, W / 2, titleTop + (titlePx - tp) / 2, 'center', 'top');
 
-  // ---- url ขวาล่าง ----
+  // แถบล่าง: เครดิตซ้าย (ark_logo วงกลม + ข้อความ) / url ขวา
+  const cy = H - footerH / 2;
+  try {
+    const logo = await loadImg('assets/ark_logo.png');
+    if (logo) circleImage(ctx, logo, sidePad + logoSize / 2, cy, logoSize / 2);
+  } catch (_) {}
+  ctx.font = `600 24px ${CFONT}`;
+  ctx.fillStyle = 'rgba(255,255,255,.72)';
+  textAt(ctx, 'Create at bonkkuwhif.github.io/BonkGraph', sidePad + logoSize + 14, cy, 'left', 'middle');
+
   if (state.url) {
     ctx.font = `500 22px ${CFONT}`;
-    ctx.fillStyle = 'rgba(255,255,255,.6)';
-    textAt(ctx, state.url, W - sidePad, H - 34, 'right', 'middle');
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    textAt(ctx, state.url, W - sidePad, cy, 'right', 'middle');
   }
-
-  canvas.toBlob((blob) => {
-    if (!blob) { alert(t('failPng')); return; }
-    download(blob, safeName(state.title || 'bonkgraph') + '.png');
-  }, 'image/png');
 }
 
-function drawBadge(ctx, img, char, x, y, R, lines = [char.name || ''], nameFontPx = 18) {
+// escape id สำหรับ querySelector (id เรามีขีด/ตัวเลข ปลอดภัยไว้ก่อน)
+function cssEsc(s) {
+  return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&');
+}
+
+function drawBadge(ctx, img, char, x, y, R, lines = [char.name || ''], nameFontPx = 18, nameChip = true) {
   ctx.save();
   // วงกลม avatar
   ctx.beginPath();
@@ -208,12 +314,17 @@ function drawBadge(ctx, img, char, x, y, R, lines = [char.name || ''], nameFontP
   let ly = y + R + Math.round(nameFontPx * 0.4) + 2;
   for (const ln of lines) {
     if (!ln) { ly += lineH; continue; }
-    const tw = ctx.measureText(ln).width;
-    ctx.fillStyle = 'rgba(12, 10, 22, .8)';
-    roundRect(ctx, x - tw / 2 - padX, ly - padY, tw + padX * 2, nameFontPx + padY * 2, rad);
-    ctx.fill();
+    if (nameChip) {
+      const tw = ctx.measureText(ln).width;
+      ctx.fillStyle = 'rgba(12, 10, 22, .8)';
+      roundRect(ctx, x - tw / 2 - padX, ly - padY, tw + padX * 2, nameFontPx + padY * 2, rad);
+      ctx.fill();
+    } else {
+      ctx.shadowColor = 'rgba(0,0,0,.7)'; ctx.shadowBlur = 3;
+    }
     ctx.fillStyle = '#fff';
     ctx.fillText(ln, x, ly);
+    ctx.shadowBlur = 0;
     ly += lineH;
   }
 }

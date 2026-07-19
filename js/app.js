@@ -1,5 +1,5 @@
 import { loadCharacters, avatarBadgeUrl } from './data.js';
-import { cloneTemplate, TEMPLATES, QUADRANT_KEYS } from './templates.js';
+import { cloneTemplate, TEMPLATES, QUADRANT_KEYS, isGridTemplate } from './templates.js';
 import { exportJSON, importJSON, exportPNG } from './export.js';
 import { t, setLang, getLang, applyI18n, LANGS } from './i18n.js';
 
@@ -49,6 +49,19 @@ function applyDisplayVars() {
 
 // ---------- RENDER: กราฟ (quadrant + แกน + ป้าย + origin) ----------
 const QUAD_KEYS = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
+
+// template ปัจจุบันเป็นเลย์เอาต์ตาราง 16 type หรือไม่
+function isGrid() { return isGridTemplate(state.template); }
+
+// ป้ายกลุ่ม temperament — แปลตามภาษาที่เลือก (key = NT/NF/SJ/SP)
+function colLabel(col) { return t('mbti' + col.key); }
+
+// เซ็ตของ type ที่มีในตารางปัจจุบัน (ใช้กรอง placement ที่ตกค้างจาก template อื่น)
+function gridTypeSet() {
+  const s = new Set();
+  if (isGrid()) for (const col of state.template.columns) for (const ty of col.types) s.add(ty);
+  return s;
+}
 
 function originPercents() {
   const { origin } = state;
@@ -120,13 +133,60 @@ function ensureOriginHandle() {
   return oh;
 }
 
+// สร้างตาราง 16 การ์ด (4 คอลัมน์ตาม temperament) — ลากรูปลงการ์ดของแต่ละ type
+function renderGridCards() {
+  el.board.querySelector('.grid-layout')?.remove();
+  const wrap = document.createElement('div');
+  wrap.className = 'grid-layout';
+
+  for (const col of state.template.columns) {
+    const colEl = document.createElement('div');
+    colEl.className = 'grid-col';
+    colEl.style.setProperty('--col', col.color);
+
+    const head = document.createElement('div');
+    head.className = 'grid-col-head';
+    head.textContent = colLabel(col);
+    colEl.appendChild(head);
+
+    for (const ty of col.types) {
+      const card = document.createElement('div');
+      card.className = 'mbti-card';
+      card.dataset.type = ty;
+      const label = document.createElement('div');
+      label.className = 'mbti-card-type';
+      label.textContent = ty;
+      const drop = document.createElement('div');
+      drop.className = 'mbti-card-drop';
+      card.appendChild(label);
+      card.appendChild(drop);
+      colEl.appendChild(card);
+    }
+    wrap.appendChild(colEl);
+  }
+  el.board.appendChild(wrap);
+}
+
 function renderGraph() {
   const { template } = state;
-  const { ox, oy, rx, ry } = originPercents();
 
   // ลบ gfx เดิม (เก็บ badge + origin handle ไว้)
   el.board.querySelectorAll('.gfx').forEach((n) => n.remove());
 
+  // เลย์เอาต์ตาราง 16 type — ไม่มีแกน/quadrant/origin
+  if (isGrid()) {
+    el.board.classList.add('grid-mode');
+    el.stage.classList.add('grid-stage');
+    el.board.querySelector('.origin-handle')?.remove();
+    renderGridCards();
+    renderBadges();
+    return;
+  }
+  el.board.classList.remove('grid-mode');
+  el.stage.classList.remove('grid-stage');
+  el.board.querySelector('.grid-layout')?.remove();
+
+  const { ox, oy, rx, ry } = originPercents();
   const q = template.quadrants;
   const quads = [
     ['topLeft', `left:0;top:0;width:${ox};height:${oy}`],
@@ -191,9 +251,11 @@ function renderGraph() {
 }
 
 // ---------- RENDER: badge ----------
-function badgeEl(char, placed) {
+// mode: 'tray' (ในถาด) | 'placed' (บนกราฟ quadrant) | 'cell' (ในการ์ด MBTI)
+function badgeEl(char, mode = 'tray') {
+  const placed = mode === 'placed';
   const b = document.createElement('div');
-  b.className = 'badge' + (placed ? ' placed' : '');
+  b.className = 'badge' + (placed ? ' placed' : '') + (mode === 'cell' ? ' in-cell' : '');
   b.dataset.id = char.id;
   b.dataset.initial = (char.name || '?').slice(0, 1);
   b.style.setProperty('--flag', char.color);
@@ -224,16 +286,39 @@ function renderBadges() {
   el.board.querySelectorAll('.badge').forEach((n) => n.remove());
   el.tray.querySelectorAll('.badge').forEach((n) => n.remove());
 
+  if (isGrid()) return renderBadgesGrid();
+
   let trayN = 0;
   for (const c of state.characters) {
     const p = state.placements[c.id];
-    if (p) {
-      const b = badgeEl(c, true);
+    if (p && p.x != null) {
+      const b = badgeEl(c, 'placed');
       b.style.left = p.x * 100 + '%';
       b.style.top = p.y * 100 + '%';
       el.board.appendChild(b);
     } else {
-      el.tray.appendChild(badgeEl(c, false));
+      el.tray.appendChild(badgeEl(c, 'tray'));
+      trayN++;
+    }
+  }
+  el.trayCount.textContent = trayN;
+}
+
+// วาง badge ลงในการ์ดของแต่ละ type (placement = { cell: 'INTJ' })
+function renderBadgesGrid() {
+  const types = gridTypeSet();
+  const drops = {};
+  el.board.querySelectorAll('.mbti-card').forEach((card) => {
+    drops[card.dataset.type] = card.querySelector('.mbti-card-drop');
+  });
+
+  let trayN = 0;
+  for (const c of state.characters) {
+    const p = state.placements[c.id];
+    if (p && p.cell && types.has(p.cell) && drops[p.cell]) {
+      drops[p.cell].appendChild(badgeEl(c, 'cell'));
+    } else {
+      el.tray.appendChild(badgeEl(c, 'tray'));
       trayN++;
     }
   }
@@ -318,6 +403,15 @@ function onBadgeMove(e) {
   if (pt.inside) moveDragTo(pt.clientX, pt.clientY);
   else moveDragTo(cx, cy);
 }
+// หา type ของการ์ดที่จุด (cx,cy) ตกอยู่ (โหมดตาราง) — คืน null ถ้าไม่โดนการ์ดไหน
+function cellFromClient(cx, cy) {
+  for (const card of el.board.querySelectorAll('.mbti-card')) {
+    const r = card.getBoundingClientRect();
+    if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) return card.dataset.type;
+  }
+  return null;
+}
+
 function onBadgeUp(e) {
   if (!drag) return;
   const b = drag.el;
@@ -326,13 +420,16 @@ function onBadgeUp(e) {
   b.removeEventListener('pointerup', onBadgeUp);
   b.removeEventListener('pointercancel', onBadgeUp);
 
-  const pt = boardPointFromClient(e.clientX - drag.dx, e.clientY - drag.dy);
+  const cx = e.clientX - drag.dx, cy = e.clientY - drag.dy;
 
-  if (pt.inside) {
-    state.placements[drag.char.id] = { x: pt.x, y: pt.y };
+  if (isGrid()) {
+    const cell = cellFromClient(cx, cy);
+    if (cell) state.placements[drag.char.id] = { cell };
+    else delete state.placements[drag.char.id];   // ปล่อยนอกการ์ด = กลับลงถาด
   } else {
-    // ปล่อยนอกกระดาน = เอากลับลงถาด
-    delete state.placements[drag.char.id];
+    const pt = boardPointFromClient(cx, cy);
+    if (pt.inside) state.placements[drag.char.id] = { x: pt.x, y: pt.y };
+    else delete state.placements[drag.char.id];    // ปล่อยนอกกระดาน = กลับลงถาด
   }
   drag = null;
   renderBadges();
@@ -588,6 +685,8 @@ function buildTemplateEditor() {
   const box = document.getElementById('tpl-fields');
   const tpl = state.template;
 
+  if (isGridTemplate(tpl)) return buildGridEditor(box, tpl);
+
   const rows = [
     [t('graphTitle'), 'title', tpl.title],
     [t('axisXRight'), 'ax-x-right', tpl.axis.x.right],
@@ -624,6 +723,31 @@ function buildTemplateEditor() {
   box.querySelectorAll('input[data-q]').forEach((inp) => {
     inp.addEventListener('input', () => {
       tpl.quadrants[inp.dataset.q][inp.dataset.f] = inp.value;
+      renderGraph(); saveLocal();
+    });
+  });
+}
+
+// ตัวแก้ไขสำหรับ template แบบตาราง: ชื่อกราฟ + สีของ 4 กลุ่ม
+// (ป้ายกลุ่มแปลตามภาษาอัตโนมัติ จึงไม่ต้องแก้เอง)
+function buildGridEditor(box, tpl) {
+  let html = `<div class="tpl-grid"><label>${t('graphTitle')}
+    <input data-gk="title" value="${escapeAttr(tpl.title)}"></label></div>
+    <div class="tpl-quads">`;
+  tpl.columns.forEach((col, i) => {
+    html += `<div class="tpl-quad"><b>${escapeAttr(colLabel(col))}</b>
+      <input data-gc="${i}" data-f="color" type="color" value="${col.color}"></div>`;
+  });
+  html += '</div>';
+  box.innerHTML = html;
+
+  const titleInp = box.querySelector('input[data-gk="title"]');
+  titleInp?.addEventListener('input', () => {
+    state.title = titleInp.value; el.title.value = titleInp.value; saveLocal();
+  });
+  box.querySelectorAll('input[data-gc]').forEach((inp) => {
+    inp.addEventListener('input', () => {
+      tpl.columns[+inp.dataset.gc][inp.dataset.f] = inp.value;
       renderGraph(); saveLocal();
     });
   });
@@ -728,6 +852,7 @@ function setupLangDropdown() {
     localStorage.setItem(LANG_KEY, getLang());
     applyI18n(document);
     buildTemplateEditor();
+    renderGraph();        // ป้ายกลุ่ม MBTI แปลตามภาษาใหม่ทันที
     renderBtn(); markActive();
     menu.hidden = true;
   };

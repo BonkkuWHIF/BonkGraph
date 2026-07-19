@@ -141,12 +141,20 @@ body {
   background: #000;              /* พื้นหลังนอกกราฟ = ดำ */
   --badge-scale: 1;
 }
-.frame-brand { display: flex; align-items: center; gap: 9px; align-self: flex-start; }
-.frame-logo {
-  width: 36px; height: 36px; border-radius: 50%;   /* logo วงกลม (ark_logo) */
-  object-fit: cover; background: #1a1526;
+/* เครดิตมุมซ้ายล่าง (คู่กับ url มุมขวาล่าง) */
+.frame-brand {
+  position: absolute;
+  left: 18px; bottom: 6px;
+  display: flex; align-items: center; gap: 7px;
+  max-width: 60%;
+  z-index: 2;
 }
-.frame-brand-txt { font-weight: 600; font-size: 14px; color: #fff; }
+.frame-logo {
+  width: 26px; height: 26px; border-radius: 50%;   /* logo วงกลม (ark_logo) */
+  object-fit: cover; background: #1a1526; flex: 0 0 auto;
+}
+.frame-brand-txt { font-weight: 600; font-size: 12.5px; color: rgba(255,255,255,.7); }
+.frame-brand-txt a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .frame-title {
   align-self: center;
   width: 100%;
@@ -320,6 +328,82 @@ body {
 /* hover ตัวไหน เด้งตัวนั้น + ชื่อขึ้นมาอยู่หน้าสุด (อ่านตัวที่ทับกันได้) */
 .badge.placed:hover { z-index: 100; }
 .badge.dragging { opacity: .9; cursor: grabbing; z-index: 9999; }
+
+/* ---------- MBTI 16-type grid ---------- */
+/* บอร์ดสูงตามเนื้อหา: การ์ดที่ตัวละครเยอะจะยืดสูงขึ้น (ไม่ตัด) แล้วบอร์ดเลื่อนดูได้ */
+#board.grid-mode {
+  aspect-ratio: auto;
+  width: min(100cqw, 1100px);
+  height: auto;
+  min-height: min(100cqh, calc(100cqw / 1.6));
+}
+@supports not (container-type: size) {
+  #board.grid-mode { width: min(96vw, 1100px); min-height: 60vh; }
+}
+/* ตอนใช้ตาราง ให้พื้นที่บอร์ดเลื่อนแนวตั้งได้ (การ์ดสูงเกินจอ) และชิดบน */
+.grid-stage .board-wrap { align-items: flex-start; overflow-y: auto; overflow-x: hidden; }
+.grid-layout {
+  display: flex;
+  gap: 1.1cqw;
+  padding: 1.1cqw;
+  box-sizing: border-box;
+  min-height: 100%;
+}
+.grid-col { flex: 1 1 0; display: flex; flex-direction: column; gap: 0.9cqw; min-height: 0; min-width: 0; }
+.grid-col-head {
+  color: var(--col, #fff);
+  font-weight: 700;
+  font-size: clamp(11px, 1.55cqw, 22px);
+  line-height: 1.15;
+  padding: 0 0.2cqw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mbti-card {
+  flex: 0 0 auto;            /* สูงตามเนื้อหา — ตัวละครเยอะ = การ์ดยืดสูง (ไม่ตัด) */
+  min-height: 9cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4cqw;
+  padding: 0.7cqw 0.7cqw 0.5cqw;
+  border-radius: 0.9cqw;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--col, #6b7280) 15%, #12101d);
+  border: 1px solid color-mix(in srgb, var(--col, #6b7280) 55%, transparent);
+}
+.mbti-card-type {
+  color: color-mix(in srgb, var(--col, #fff) 78%, #ffffff);
+  font-weight: 700;
+  font-size: clamp(10px, 1.35cqw, 19px);
+  line-height: 1;
+  letter-spacing: .02em;
+  flex: 0 0 auto;
+}
+.mbti-card-drop {
+  flex: 1;
+  min-height: 5cqw;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5cqw 0.7cqw;
+  justify-content: center;
+  align-content: flex-start;
+}
+/* badge ในการ์ด — รูปวงกลม + ชื่อใต้รูป, ไหลเรียงในการ์ด (อิง cqw ให้ตรงกับ PNG) */
+.badge.in-cell { width: auto; min-width: 0; max-width: none; gap: 0.2cqw; }
+.badge.in-cell img,
+.badge.in-cell.noimg::before {
+  width: calc(4.4cqw * var(--badge-scale, 1));
+  height: calc(4.4cqw * var(--badge-scale, 1));
+  border-width: 2px;
+}
+.badge.in-cell.noimg::before { font-size: 2.2cqw; }
+.badge.in-cell .badge-name {
+  font-size: clamp(7px, 1.05cqw, 18px);
+  line-height: 1.2;
+  max-width: 18cqw;
+  color: #fff;
+}
 
 /* ---------- tray ---------- */
 #tray-wrap {

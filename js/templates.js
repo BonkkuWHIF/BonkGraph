@@ -43,6 +43,22 @@ export const TEMPLATES = {
     },
   },
 
+  // เลย์เอาต์แบบตาราง 16 บุคลิก (ลากรูปลงการ์ดของแต่ละ type)
+  // จัดกลุ่ม 4 คอลัมน์ตามอารมณ์นิยม (temperament): NT / NF / SJ / SP
+  mbti16: {
+    id: 'mbti16',
+    name: 'MBTI · 16 Types',
+    kind: 'grid',
+    title: 'Character MBTI Map',
+    // ป้ายกลุ่ม (temperament) แปลตามภาษาที่เลือกด้วย i18n key = 'mbti' + key (ดู i18n.js)
+    columns: [
+      { key: 'NT', color: '#8f6fc4', types: ['INTJ', 'INTP', 'ENTJ', 'ENTP'] },
+      { key: 'NF', color: '#33a474', types: ['INFJ', 'INFP', 'ENFJ', 'ENFP'] },
+      { key: 'SJ', color: '#4298b4', types: ['ISTJ', 'ISFJ', 'ESTJ', 'ESFJ'] },
+      { key: 'SP', color: '#d7a12f', types: ['ISTP', 'ISFP', 'ESTP', 'ESFP'] },
+    ],
+  },
+
   blank: {
     id: 'blank',
     name: 'Blank (Custom)',
@@ -67,3 +83,8 @@ export function cloneTemplate(id) {
 }
 
 export const QUADRANT_KEYS = ['topRight', 'bottomRight', 'bottomLeft', 'topLeft'];
+
+// template ใช้เลย์เอาต์ตาราง (การ์ด 16 type) หรือแบบ quadrant เดิม
+export function isGridTemplate(tpl) {
+  return !!tpl && tpl.kind === 'grid';
+}
